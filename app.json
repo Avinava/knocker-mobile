@@ -1,0 +1,73 @@
+{
+  "expo": {
+    "name": "Knocker Mobile",
+    "slug": "knocker-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1e3a8a"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.knocker.mobile",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Knocker needs your location to show nearby properties and track door knock events.",
+        "NSLocationAlwaysUsageDescription": "Knocker needs your location to track your field work and improve canvassing efficiency.",
+        "NSCameraUsageDescription": "Knocker needs camera access to capture photos for utility bills and property documentation.",
+        "NSPhotoLibraryUsageDescription": "Knocker needs photo library access to attach images to leads and properties."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1e3a8a"
+      },
+      "package": "com.knocker.mobile",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Knocker to use your location for tracking property visits and door knocks."
+        }
+      ],
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsDownloadToken": "",
+          "RNMapboxMapsImpl": "mapbox"
+        }
+      ],
+      "expo-secure-store",
+      "expo-sqlite"
+    ],
+    "scheme": "knocker",
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "your-project-id"
+      }
+    }
+  }
+}
