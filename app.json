@@ -53,7 +53,6 @@
       [
         "@rnmapbox/maps/app.plugin.js",
         {
-          "RNMapboxMapsDownloadToken": "pk.eyJ1IjoiYXZpY2FsOTkiLCJhIjoiY20ybWJ1NHBtMGpteTJpcjJlbXZvNWRlcSJ9.uXNyHy-mKBwW58k-_3GMPQ",
           "RNMapboxMapsImpl": "mapbox"
         }
       ],
