@@ -72,7 +72,7 @@ export const useMapStore = create<MapState>((set) => ({
 
   closeDrawer: () => set({
     isDrawerOpen: false,
-    selectedProperty: null,
+    // selectedProperty: null, // Don't clear property when just closing drawer UI
   }),
 
   openKnockModal: () => set({ isKnockModalOpen: true }),

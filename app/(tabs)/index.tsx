@@ -3,7 +3,7 @@ import { View, StyleSheet, Modal, Text, TouchableOpacity, ActivityIndicator, Tex
 import { MapView } from '@/components/map/MapView';
 import { PropertyLayer } from '@/components/map/PropertyLayer';
 import { PropertyDetailsDrawer } from '@/components/property/PropertyDetailsDrawer';
-import { KnockDoorModal } from '@/components/knock/KnockDoorModal';
+import { KnockDoorSheet } from '@/components/knock/KnockDoorSheet';
 import { usePropertiesInBounds } from '@/hooks/useProperties';
 import { useMapStore } from '@/stores/mapStore';
 import { Property, Bounds } from '@/models/types';
@@ -217,8 +217,9 @@ export default function MapScreen() {
         </View>
       </Modal>
 
-      <KnockDoorModal />
-    </View>
+      <KnockDoorSheet />
+
+    </View >
   );
 }
 
