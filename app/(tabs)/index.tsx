@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, Modal } from 'react-native';
+import { View, StyleSheet, Modal, ActivityIndicator, Text } from 'react-native';
 import { MapView } from '@/components/map/MapView';
 import { PropertyLayer } from '@/components/map/PropertyLayer';
 import { PropertyDetailsDrawer } from '@/components/property/PropertyDetailsDrawer';
@@ -19,26 +19,25 @@ export default function MapScreen() {
   } = useMapStore();
 
   // Fetch properties within current map bounds
-  const { data: properties = [], isLoading, error } = usePropertiesInBounds(currentBounds);
+  const { data: properties = [], isLoading, isFetching, error } = usePropertiesInBounds(currentBounds);
 
   // Debug logging
   useEffect(() => {
     console.log('[MapScreen] Current bounds:', currentBounds);
     console.log('[MapScreen] Properties loaded:', properties.length);
-    console.log('[MapScreen] Loading:', isLoading);
+    console.log('[MapScreen] Loading:', isLoading, 'Fetching:', isFetching);
     if (error) {
       console.error('[MapScreen] Error loading properties:', error);
     }
     if (properties.length > 0) {
       console.log('[MapScreen] Sample property:', JSON.stringify(properties[0], null, 2));
     }
-  }, [currentBounds, properties, isLoading, error]);
+  }, [currentBounds, properties, isLoading, isFetching, error]);
 
   const handleRegionChange = useCallback((bounds: Bounds) => {
     console.log('[MapScreen] Region changed, new bounds:', bounds);
     setCurrentBounds(bounds);
   }, []);
-
 
   const handlePropertyPress = useCallback((property: Property) => {
     selectProperty(property);
@@ -59,7 +58,7 @@ export default function MapScreen() {
       <MapView onRegionChange={handleRegionChange}>
         {({ MapboxGL }) => (
           <>
-            {!isLoading && properties.length > 0 && (
+            {properties.length > 0 && (
               <PropertyLayer
                 properties={properties}
                 onPropertyPress={handlePropertyPress}
@@ -69,6 +68,16 @@ export default function MapScreen() {
           </>
         )}
       </MapView>
+
+      {/* Loading Indicator */}
+      {(isLoading || isFetching) && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color="#3B82F6" />
+            <Text style={styles.loadingText}>Loading properties...</Text>
+          </View>
+        </View>
+      )}
 
       {/* Property Details Drawer */}
       <Modal
@@ -97,9 +106,33 @@ export default function MapScreen() {
   );
 }
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 60,
+    left: 16,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  loadingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#374151',
   },
   modalOverlay: {
     flex: 1,
@@ -110,3 +143,4 @@ const styles = StyleSheet.create({
     flex: 0,
   },
 });
+
