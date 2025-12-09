@@ -51,14 +51,13 @@
         }
       ],
       [
-        "@rnmapbox/maps",
+        "@rnmapbox/maps/app.plugin.js",
         {
-          "RNMapboxMapsDownloadToken": "",
+          "RNMapboxMapsDownloadToken": "pk.eyJ1IjoiYXZpY2FsOTkiLCJhIjoiY20ybWJ1NHBtMGpteTJpcjJlbXZvNWRlcSJ9.uXNyHy-mKBwW58k-_3GMPQ",
           "RNMapboxMapsImpl": "mapbox"
         }
       ],
-      "expo-secure-store",
-      "expo-sqlite"
+      "expo-secure-store"
     ],
     "scheme": "knocker",
     "extra": {
