@@ -40,8 +40,10 @@ export function MapView({ onRegionChange, children }: MapViewProps) {
         // Dynamically load Mapbox
         const Mapbox = require('@rnmapbox/maps');
 
-        // Setup Mapbox
-        Mapbox.setAccessToken(MAPBOX_CONFIG.ACCESS_TOKEN);
+        // Setup Mapbox with token from config
+        const token = MAPBOX_CONFIG.ACCESS_TOKEN;
+        console.log('Initializing Mapbox with token:', token?.substring(0, 20) + '...');
+        Mapbox.setAccessToken(token);
         setMapboxGL(Mapbox);
       } catch (error) {
         console.warn('Mapbox native module not found. Falling back to placeholder.', error);
