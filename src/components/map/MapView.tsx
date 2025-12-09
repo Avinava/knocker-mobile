@@ -232,99 +232,7 @@ export function MapView({ onRegionChange, children }: MapViewProps) {
       </NativeMapView>
 
       {/* Map Controls Toolbar */}
-      <View style={styles.controlsContainer}>
-        {/* Zoom In Button */}
-        <TouchableOpacity
-          style={styles.controlButton}
-          onPress={handleZoomIn}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add" size={24} color="#374151" />
-        </TouchableOpacity>
-
-        {/* Zoom Out Button */}
-        <TouchableOpacity
-          style={styles.controlButton}
-          onPress={handleZoomOut}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="remove" size={24} color="#374151" />
-        </TouchableOpacity>
-
-        {/* My Location Button */}
-        <TouchableOpacity
-          style={styles.controlButton}
-          onPress={handleGoToMyLocation}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="navigate" size={22} color="#374151" />
-        </TouchableOpacity>
-
-        {/* Refresh Button (triggers region change) */}
-        <TouchableOpacity
-          style={styles.controlButton}
-          onPress={handleRegionDidChange}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="refresh" size={22} color="#374151" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Floating Style Picker Button */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setShowStylePicker(true)}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="layers" size={24} color="#fff" />
-      </TouchableOpacity>
-
-      {/* Style Picker Modal */}
-      <Modal
-        visible={showStylePicker}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowStylePicker(false)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowStylePicker(false)}
-        >
-          <View style={styles.stylePickerContainer}>
-            <Text style={styles.stylePickerTitle}>Map Style</Text>
-            {styleOptions.map((option) => (
-              <TouchableOpacity
-                key={option.key}
-                style={[
-                  styles.styleOption,
-                  currentStyle === option.key && styles.styleOptionActive,
-                ]}
-                onPress={() => {
-                  setMapStyle(option.key);
-                  setShowStylePicker(false);
-                }}
-              >
-                <Ionicons
-                  name={option.icon}
-                  size={20}
-                  color={currentStyle === option.key ? '#3b82f6' : '#6b7280'}
-                />
-                <Text
-                  style={[
-                    styles.styleOptionText,
-                    currentStyle === option.key && styles.styleOptionTextActive,
-                  ]}
-                >
-                  {option.label}
-                </Text>
-                {currentStyle === option.key && (
-                  <Ionicons name="checkmark" size={20} color="#3b82f6" />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </Pressable>
-      </Modal>
+      {/* Map Controls have been moved to parent component */}
     </View>
   );
 }
@@ -360,80 +268,10 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     textAlign: 'center',
   },
-  controlsContainer: {
-    position: 'absolute',
-    right: 16,
-    top: 100,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  controlButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 100,
-    right: 16,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#3b82f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  stylePickerContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    width: '80%',
-    maxWidth: 300,
-  },
-  stylePickerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  styleOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  styleOptionActive: {
-    backgroundColor: '#eff6ff',
-  },
-  styleOptionText: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 16,
-    color: '#4b5563',
-  },
-  styleOptionTextActive: {
-    color: '#3b82f6',
-    fontWeight: '500',
   },
 });

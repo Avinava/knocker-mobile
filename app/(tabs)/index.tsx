@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, Modal, ActivityIndicator, Text } from 'react-native';
+import { View, StyleSheet, Modal, Text, TouchableOpacity, ActivityIndicator, TextInput, Platform, Alert } from 'react-native';
 import { MapView } from '@/components/map/MapView';
 import { PropertyLayer } from '@/components/map/PropertyLayer';
 import { PropertyDetailsDrawer } from '@/components/property/PropertyDetailsDrawer';
@@ -7,19 +7,71 @@ import { KnockDoorModal } from '@/components/knock/KnockDoorModal';
 import { usePropertiesInBounds } from '@/hooks/useProperties';
 import { useMapStore } from '@/stores/mapStore';
 import { Property, Bounds } from '@/models/types';
+import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { FadeIn, FadeOut, FadeInUp, FadeOutUp } from 'react-native-reanimated';
+import * as Location from 'expo-location';
+
+const MapControlBar = ({
+  onZoomIn,
+  onZoomOut,
+  onLocation,
+  onRefresh,
+  onSearchToggle,
+  onStyleToggle,
+  isSearchVisible
+}: {
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onLocation: () => void;
+  onRefresh: () => void;
+  onSearchToggle: () => void;
+  onStyleToggle: () => void;
+  isSearchVisible: boolean;
+}) => (
+  <View style={styles.controlBar}>
+    <TouchableOpacity onPress={onSearchToggle} style={styles.controlButton}>
+      <Ionicons name={isSearchVisible ? "close" : "search"} size={22} color="#374151" />
+    </TouchableOpacity>
+    <View style={styles.dividerHorizontal} />
+    <TouchableOpacity onPress={onZoomIn} style={styles.controlButton}>
+      <Ionicons name="add" size={24} color="#374151" />
+    </TouchableOpacity>
+    <TouchableOpacity onPress={onZoomOut} style={styles.controlButton}>
+      <Ionicons name="remove" size={24} color="#374151" />
+    </TouchableOpacity>
+    <View style={styles.dividerHorizontal} />
+    <TouchableOpacity onPress={onLocation} style={styles.controlButton}>
+      <Ionicons name="navigate" size={22} color="#374151" />
+    </TouchableOpacity>
+    <TouchableOpacity onPress={onRefresh} style={styles.controlButton}>
+      <Ionicons name="refresh" size={22} color="#374151" />
+    </TouchableOpacity>
+    <View style={styles.dividerHorizontal} />
+    <TouchableOpacity onPress={onStyleToggle} style={styles.controlButton}>
+      <Ionicons name="layers-outline" size={22} color="#374151" />
+    </TouchableOpacity>
+  </View>
+);
 
 export default function MapScreen() {
   const [currentBounds, setCurrentBounds] = useState<Bounds | null>(null);
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+
   const {
     selectedProperty,
     selectProperty,
     isDrawerOpen,
     closeDrawer,
     openKnockModal,
+    viewState,
+    setViewState,
+    setMapStyle,
+    currentStyle
   } = useMapStore();
 
   // Fetch properties within current map bounds
-  const { data: properties = [], isLoading, isFetching, error } = usePropertiesInBounds(currentBounds);
+  const { data: properties = [], isLoading, isFetching, error, refetch } = usePropertiesInBounds(currentBounds);
 
   // Debug logging
   useEffect(() => {
@@ -29,13 +81,10 @@ export default function MapScreen() {
     if (error) {
       console.error('[MapScreen] Error loading properties:', error);
     }
-    if (properties.length > 0) {
-      console.log('[MapScreen] Sample property:', JSON.stringify(properties[0], null, 2));
-    }
   }, [currentBounds, properties, isLoading, isFetching, error]);
 
   const handleRegionChange = useCallback((bounds: Bounds) => {
-    console.log('[MapScreen] Region changed, new bounds:', bounds);
+    // console.log('[MapScreen] Region changed, new bounds:', bounds);
     setCurrentBounds(bounds);
   }, []);
 
@@ -53,6 +102,35 @@ export default function MapScreen() {
     console.log('Create lead for:', selectedProperty?.Id);
   }, [selectedProperty]);
 
+  // Controls Logic
+  const handleZoomIn = () => setViewState({ ...viewState, zoom: viewState.zoom + 1 });
+  const handleZoomOut = () => setViewState({ ...viewState, zoom: Math.max(1, viewState.zoom - 1) });
+
+  const handleLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission denied', 'Allow location access to find your position.');
+        return;
+      }
+      const location = await Location.getCurrentPositionAsync({});
+      setViewState({
+        ...viewState,
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        zoom: 16
+      });
+    } catch (err) {
+      console.log('Loc error', err);
+    }
+  };
+
+  const handleStyleToggle = () => {
+    const styles: Array<typeof currentStyle> = ['streets', 'satellite', 'hybrid'];
+    const nextIndex = (styles.indexOf(currentStyle) + 1) % styles.length;
+    setMapStyle(styles[nextIndex]);
+  };
+
   return (
     <View style={styles.container}>
       <MapView onRegionChange={handleRegionChange}>
@@ -69,15 +147,54 @@ export default function MapScreen() {
         )}
       </MapView>
 
-      {/* Loading Indicator */}
-      {(isLoading || isFetching) && (
-        <View style={styles.loadingOverlay}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color="#3B82F6" />
-            <Text style={styles.loadingText}>Loading properties...</Text>
-          </View>
-        </View>
+      {/* Top Search Area */}
+      {isSearchVisible && (
+        <Animated.View
+          entering={FadeInUp.springify()}
+          exiting={FadeOutUp}
+          style={styles.searchContainer}
+        >
+          <SafeAreaView edges={['top']}>
+            <View style={styles.searchBar}>
+              <Ionicons name="search" size={20} color="#9CA3AF" />
+              <TextInput
+                placeholder="Search area, address or city..."
+                placeholderTextColor="#9CA3AF"
+                style={styles.searchInput}
+                autoFocus
+              />
+              <TouchableOpacity onPress={() => setIsSearchVisible(false)}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </Animated.View>
       )}
+
+      {/* Loading Pill (Top Center, moves down if search is visible) */}
+      {(isLoading || isFetching) && (
+        <Animated.View
+          entering={FadeIn}
+          exiting={FadeOut}
+          style={[styles.loadingPill, isSearchVisible && { top: 110 }]}
+        >
+          <ActivityIndicator size="small" color="#3B82F6" />
+          <Text style={styles.loadingText}>Updating map area...</Text>
+        </Animated.View>
+      )}
+
+      {/* Bottom Clean Control Bar */}
+      <SafeAreaView style={styles.bottomContainer} edges={['bottom']} pointerEvents="box-none">
+        <MapControlBar
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onLocation={handleLocation}
+          onRefresh={() => refetch()}
+          onSearchToggle={() => setIsSearchVisible(!isSearchVisible)}
+          onStyleToggle={handleStyleToggle}
+          isSearchVisible={isSearchVisible}
+        />
+      </SafeAreaView>
 
       {/* Property Details Drawer */}
       <Modal
@@ -100,39 +217,108 @@ export default function MapScreen() {
         </View>
       </Modal>
 
-      {/* Knock Door Modal */}
       <KnockDoorModal />
     </View>
   );
 }
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loadingOverlay: {
+  searchContainer: {
     position: 'absolute',
-    top: 60,
-    left: 16,
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    paddingBottom: 12,
+    zIndex: 10,
   },
-  loadingContainer: {
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: 'white',
+    marginHorizontal: 16,
+    height: 48,
+    borderRadius: 24,
+    paddingHorizontal: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
+  searchInput: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#1F2937',
+    height: '100%',
+  },
+  cancelText: {
+    color: '#3B82F6',
+    fontWeight: '500',
+    marginLeft: 12,
+  },
+  loadingPill: {
+    position: 'absolute',
+    top: 60,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 5,
+  },
   loadingText: {
     marginLeft: 8,
     fontSize: 14,
+    fontWeight: '500',
     color: '#374151',
+  },
+  bottomContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 16, // Align to right
+    alignItems: 'flex-end', // Align items to end
+    paddingBottom: 40, // More padding to clear safe area/tab bar
+  },
+  controlBar: {
+    flexDirection: 'column', // Vertical stack
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 24, // Slightly different radius for vertical pill
+    paddingHorizontal: 6,
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
+    marginBottom: 10,
+  },
+  controlButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 22,
+  },
+  dividerHorizontal: {
+    width: 24,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: 4,
   },
   modalOverlay: {
     flex: 1,
@@ -143,5 +329,4 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 });
-
 
