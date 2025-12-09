@@ -10,9 +10,9 @@ import { Property, Bounds } from '@/models/types';
 
 export default function MapScreen() {
   const [currentBounds, setCurrentBounds] = useState<Bounds | null>(null);
-  const { 
-    selectedProperty, 
-    selectProperty, 
+  const {
+    selectedProperty,
+    selectProperty,
     isDrawerOpen,
     closeDrawer,
     openKnockModal,
@@ -41,14 +41,19 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <MapView onRegionChange={handleRegionChange} />
-      
-      {!isLoading && properties.length > 0 && (
-        <PropertyLayer
-          properties={properties}
-          onPropertyPress={handlePropertyPress}
-        />
-      )}
+      <MapView onRegionChange={handleRegionChange}>
+        {({ MapboxGL }) => (
+          <>
+            {!isLoading && properties.length > 0 && (
+              <PropertyLayer
+                properties={properties}
+                onPropertyPress={handlePropertyPress}
+                MapboxGL={MapboxGL}
+              />
+            )}
+          </>
+        )}
+      </MapView>
 
       {/* Property Details Drawer */}
       <Modal

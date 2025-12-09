@@ -1,28 +1,49 @@
-import React, { useRef, useEffect, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
-import Mapbox from '@rnmapbox/maps';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
+import { View, StyleSheet, Text } from 'react-native';
+// Mapbox is imported dynamically to avoid crashes in Expo Go
+// import Mapbox from '@rnmapbox/maps'; 
 import { MAPBOX_CONFIG, MAP_DEFAULTS } from '@/config/mapbox';
 import { useMapStore } from '@/stores/mapStore';
 import { Bounds } from '@/models/types';
 
-// Initialize Mapbox
-Mapbox.setAccessToken(MAPBOX_CONFIG.ACCESS_TOKEN);
-
 interface MapViewProps {
   onRegionChange?: (bounds: Bounds) => void;
+  children?: React.ReactNode | ((props: { MapboxGL: any }) => React.ReactNode);
 }
 
-export function MapView({ onRegionChange }: MapViewProps) {
-  const mapRef = useRef<Mapbox.MapView>(null);
-  const cameraRef = useRef<Mapbox.Camera>(null);
-  
-  const { 
-    viewState, 
-    setViewState, 
+export function MapView({ onRegionChange, children }: MapViewProps) {
+  // We use 'any' for the module because dynamic require loses types
+  const [MapboxGL, setMapboxGL] = useState<any>(null);
+  const [isSupported, setIsSupported] = useState(true);
+
+  const mapRef = useRef<any>(null);
+  const cameraRef = useRef<any>(null);
+
+  const {
+    viewState,
+    setViewState,
     setBounds,
     currentStyle,
     showUserLocation,
   } = useMapStore();
+
+  useEffect(() => {
+    async function loadMapbox() {
+      try {
+        // Dynamically load Mapbox to safely handle Expo Go (where native code is missing)
+        const Mapbox = require('@rnmapbox/maps');
+
+        // Setup Mapbox
+        Mapbox.setAccessToken(MAPBOX_CONFIG.ACCESS_TOKEN);
+        setMapboxGL(Mapbox);
+      } catch (error) {
+        console.warn('Mapbox native module not found. Falling back to placeholder.', error);
+        setIsSupported(false);
+      }
+    }
+
+    loadMapbox();
+  }, []);
 
   // Get map style URL based on current style
   const getStyleURL = () => {
@@ -71,19 +92,48 @@ export function MapView({ onRegionChange }: MapViewProps) {
     }
   }, [setBounds, setViewState, viewState, onRegionChange]);
 
-  // Initial map load
+  // Initial map load (only if supported)
   useEffect(() => {
+    if (!isSupported || !MapboxGL) return;
+
     // Trigger initial bounds calculation after map loads
     const timer = setTimeout(() => {
       handleRegionDidChange();
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [isSupported, MapboxGL]);
+
+  if (!isSupported) {
+    return (
+      <View style={styles.fallbackContainer}>
+        <Text style={styles.fallbackTitle}>Map Not Available</Text>
+        <Text style={styles.fallbackText}>
+          Mapbox requires custom native code and cannot run in Expo Go.
+        </Text>
+        <Text style={styles.fallbackSubText}>
+          Please use a Development Build (EAS Build) or test on a simulator with the native app installed.
+        </Text>
+      </View>
+    );
+  }
+
+  if (!MapboxGL) {
+    return (
+      <View style={styles.fallbackContainer}>
+        <Text>Loading Map...</Text>
+      </View>
+    );
+  }
+
+  // Render Map using the dynamically loaded module
+  const { MapView: NativeMapView, Camera, UserLocation } = MapboxGL;
+
+  const renderedChildren = typeof children === 'function' ? children({ MapboxGL }) : children;
 
   return (
     <View style={styles.container}>
-      <Mapbox.MapView
+      <NativeMapView
         ref={mapRef}
         style={styles.map}
         styleURL={getStyleURL()}
@@ -93,7 +143,7 @@ export function MapView({ onRegionChange }: MapViewProps) {
         attributionEnabled={false}
         logoEnabled={false}
       >
-        <Mapbox.Camera
+        <Camera
           ref={cameraRef}
           zoomLevel={viewState.zoom}
           centerCoordinate={[viewState.longitude, viewState.latitude]}
@@ -105,15 +155,15 @@ export function MapView({ onRegionChange }: MapViewProps) {
 
         {/* User Location */}
         {showUserLocation && (
-          <Mapbox.UserLocation
+          <UserLocation
             visible
             showsUserHeadingIndicator
             minDisplacement={10}
           />
         )}
 
-        {/* Property markers will be added here */}
-      </Mapbox.MapView>
+        {renderedChildren}
+      </NativeMapView>
     </View>
   );
 }
@@ -124,5 +174,29 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  fallbackContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: '#f3f4f6',
+  },
+  fallbackTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 12,
+  },
+  fallbackText: {
+    fontSize: 16,
+    color: '#4b5563',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  fallbackSubText: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
   },
 });

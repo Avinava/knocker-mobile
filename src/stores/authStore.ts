@@ -1,10 +1,8 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
-import { MMKV } from 'react-native-mmkv';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authApi } from '@/services/api/auth';
 import { User, LoginCredentials } from '@/models/types';
-
-const storage = new MMKV();
 
 interface AuthState {
   user: User | null;
@@ -12,7 +10,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => Promise<void>;
@@ -31,13 +29,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await authApi.login(credentials);
-      
+
       // Store token securely
       await SecureStore.setItemAsync('authToken', response.token);
-      
-      // Store user in MMKV for fast access
-      storage.set('user', JSON.stringify(response.user));
-      
+
+      // Store user in AsyncStorage
+      await AsyncStorage.setItem('user', JSON.stringify(response.user));
+
       set({
         user: response.user,
         token: response.token,
@@ -65,8 +63,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Clear all auth data
       await SecureStore.deleteItemAsync('authToken');
       await SecureStore.deleteItemAsync('refreshToken');
-      storage.delete('user');
-      
+      await AsyncStorage.removeItem('user');
+
       set({
         user: null,
         token: null,
@@ -81,8 +79,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       const token = await SecureStore.getItemAsync('authToken');
-      const userJson = storage.getString('user');
-      
+      const userJson = await AsyncStorage.getItem('user');
+
       if (token && userJson) {
         const user = JSON.parse(userJson);
         set({

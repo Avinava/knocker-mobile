@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import Mapbox from '@rnmapbox/maps';
+// import Mapbox from '@rnmapbox/maps'; // Removed to avoid crash
 import { Property } from '@/models/types';
 import { PropertyMarker } from './PropertyMarker';
 import { useMapStore } from '@/stores/mapStore';
@@ -8,9 +8,10 @@ import { MAP_SETTINGS } from '@/config/mapbox';
 interface PropertyLayerProps {
   properties: Property[];
   onPropertyPress: (property: Property) => void;
+  MapboxGL: any; // Injected dependency
 }
 
-export function PropertyLayer({ properties, onPropertyPress }: PropertyLayerProps) {
+export function PropertyLayer({ properties, onPropertyPress, MapboxGL }: PropertyLayerProps) {
   const { clusteringEnabled, selectedProperty } = useMapStore();
 
   // Convert properties to GeoJSON for clustering
@@ -37,6 +38,8 @@ export function PropertyLayer({ properties, onPropertyPress }: PropertyLayerProp
     };
   }, [properties]);
 
+  if (!MapboxGL) return null;
+
   if (!clusteringEnabled) {
     // Render individual markers without clustering
     return (
@@ -47,6 +50,7 @@ export function PropertyLayer({ properties, onPropertyPress }: PropertyLayerProp
             property={property}
             onPress={onPropertyPress}
             isSelected={selectedProperty?.Id === property.Id}
+            MapboxGL={MapboxGL}
           />
         ))}
       </>
@@ -55,7 +59,7 @@ export function PropertyLayer({ properties, onPropertyPress }: PropertyLayerProp
 
   // Render with clustering
   return (
-    <Mapbox.ShapeSource
+    <MapboxGL.ShapeSource
       id="properties-source"
       shape={geoJSON}
       cluster
@@ -63,7 +67,7 @@ export function PropertyLayer({ properties, onPropertyPress }: PropertyLayerProp
       clusterMaxZoomLevel={MAP_SETTINGS.CLUSTER_MAX_ZOOM}
     >
       {/* Cluster circles */}
-      <Mapbox.CircleLayer
+      <MapboxGL.CircleLayer
         id="clusters"
         filter={['has', 'point_count']}
         style={{
@@ -84,7 +88,7 @@ export function PropertyLayer({ properties, onPropertyPress }: PropertyLayerProp
       />
 
       {/* Cluster count labels */}
-      <Mapbox.SymbolLayer
+      <MapboxGL.SymbolLayer
         id="cluster-count"
         filter={['has', 'point_count']}
         style={{
@@ -96,7 +100,7 @@ export function PropertyLayer({ properties, onPropertyPress }: PropertyLayerProp
       />
 
       {/* Individual property markers */}
-      <Mapbox.CircleLayer
+      <MapboxGL.CircleLayer
         id="unclustered-point"
         filter={['!', ['has', 'point_count']]}
         style={{
@@ -106,6 +110,6 @@ export function PropertyLayer({ properties, onPropertyPress }: PropertyLayerProp
           circleStrokeColor: '#ffffff',
         }}
       />
-    </Mapbox.ShapeSource>
+    </MapboxGL.ShapeSource>
   );
 }
