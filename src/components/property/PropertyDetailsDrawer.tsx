@@ -1,10 +1,18 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  StyleSheet,
+  Dimensions,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePropertyDetails } from '@/hooks/useProperties';
-import { useMapStore } from '@/stores/mapStore';
 import { Property } from '@/models/types';
 import { formatDate, getRelativeTime } from '@/utils/dateUtils';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface PropertyDetailsDrawerProps {
   property: Property;
@@ -13,189 +21,584 @@ interface PropertyDetailsDrawerProps {
   onCreateLead: () => void;
 }
 
-export function PropertyDetailsDrawer({ 
-  property, 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+export function PropertyDetailsDrawer({
+  property,
   onClose,
   onKnockDoor,
   onCreateLead,
 }: PropertyDetailsDrawerProps) {
+  const insets = useSafeAreaInsets();
   const { data: details, isLoading } = usePropertyDetails(property.Id);
+  const [activeTab, setActiveTab] = useState<'details' | 'related'>('details');
 
   if (isLoading) {
     return (
-      <View className="bg-white h-1/2 rounded-t-3xl p-6">
-        <View className="flex-1 justify-center items-center">
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3b82f6" />
+          <Text style={styles.loadingText}>Loading property details...</Text>
         </View>
       </View>
     );
   }
 
   const fullProperty = details?.property || property;
-  const events = details?.events || [];
-  const leads = details?.leads || [];
+  const events = fullProperty?.Events?.records || details?.events || [];
+  const leads = fullProperty?.Leads__r?.records || details?.leads || [];
+  const projects = fullProperty?.Projects__r?.records || [];
+
+  // Get most recent event
   const recentEvent = events[0];
-  
+  const dispositionStatus = recentEvent?.Disposition_Status__c || 'N/A';
+  const daysAgo = recentEvent?.CreatedDate ? getRelativeTime(recentEvent.CreatedDate) : null;
+  const submittedBy = recentEvent?.Submitted_By__r?.Name || 'N/A';
+
   // Format address
-  const address = [
-    fullProperty.Street__c,
+  const address = fullProperty.Street__c ||
+    fullProperty.Property_Street__c ||
+    fullProperty.Address__c?.split(',')[0] ||
+    'Unknown Address';
+
+  const fullAddress = [
     fullProperty.City__c,
     fullProperty.State__c,
+    fullProperty.Postal_Code__c,
   ].filter(Boolean).join(', ');
 
   return (
-    <View className="bg-white h-2/3 rounded-t-3xl shadow-2xl">
+    <View style={styles.container}>
       {/* Header */}
-      <View className="flex-row justify-between items-center px-6 pt-4 pb-2 border-b border-gray-200">
-        <Text className="text-xl font-bold text-gray-900 flex-1" numberOfLines={2}>
+      <View style={styles.header}>
+        <View style={styles.dragHandle} />
+        <Text style={styles.title} numberOfLines={2}>
           {address}
         </Text>
-        <TouchableOpacity onPress={onClose} className="ml-2">
-          <Ionicons name="close" size={28} color="#6b7280" />
+        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <Ionicons name="close" size={24} color="#6b7280" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Property Info */}
-        <View className="px-6 py-4 border-b border-gray-200">
-          <View className="flex-row items-center mb-2">
-            <Ionicons name="location" size={16} color="#6b7280" />
-            <Text className="text-sm text-gray-600 ml-2">
-              {fullProperty.City__c}, {fullProperty.State__c} {fullProperty.Postal_Code__c}
-            </Text>
-          </View>
-          
-          {fullProperty.Owner_1_Name_Full__c && (
-            <View className="flex-row items-center mb-2">
-              <Ionicons name="person" size={16} color="#6b7280" />
-              <Text className="text-sm text-gray-600 ml-2">
-                Owner: {fullProperty.Owner_1_Name_Full__c}
-              </Text>
+      {/* Tabs */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'details' && styles.activeTab]}
+          onPress={() => setActiveTab('details')}
+        >
+          <Text style={[styles.tabText, activeTab === 'details' && styles.activeTabText]}>
+            Details
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'related' && styles.activeTab]}
+          onPress={() => setActiveTab('related')}
+        >
+          <Text style={[styles.tabText, activeTab === 'related' && styles.activeTabText]}>
+            Related
+          </Text>
+          {(events.length > 0 || leads.length > 0) && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{events.length + leads.length}</Text>
             </View>
           )}
+        </TouchableOpacity>
+      </View>
 
-          {fullProperty.Year_Built_Primary_Structure__c && (
-            <View className="flex-row items-center">
-              <Ionicons name="home" size={16} color="#6b7280" />
-              <Text className="text-sm text-gray-600 ml-2">
-                Built: {fullProperty.Year_Built_Primary_Structure__c}
-              </Text>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={[styles.contentContainer, { paddingBottom: 120 }]}
+        showsVerticalScrollIndicator={false}
+      >
+
+        {activeTab === 'details' ? (
+          <>
+            {/* Address Section */}
+            <View style={styles.section}>
+              <View style={styles.sectionRow}>
+                <View style={styles.sectionContent}>
+                  <Text style={styles.sectionLabel}>Address</Text>
+                  <Text style={styles.sectionValue}>{address}</Text>
+                  <Text style={styles.sectionSubValue}>{fullAddress}</Text>
+                </View>
+                {projects.length > 0 && (
+                  <View style={styles.projectBadge}>
+                    <Text style={styles.projectBadgeText}>Has Project</Text>
+                  </View>
+                )}
+              </View>
             </View>
-          )}
-        </View>
 
-        {/* Recent Activity */}
-        {recentEvent && (
-          <View className="px-6 py-4 border-b border-gray-200">
-            <Text className="text-lg font-semibold text-gray-900 mb-2">
-              Recent Activity
-            </Text>
-            <View className="bg-gray-50 p-3 rounded-lg">
-              <Text className="text-sm font-medium text-gray-900">
-                {recentEvent.Subject}
+            {/* Owner Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Owner</Text>
+              <Text style={styles.sectionValue}>
+                {fullProperty.Owner_1_Name_Full__c || 'N/A'}
               </Text>
-              <Text className="text-xs text-gray-500 mt-1">
-                {getRelativeTime(recentEvent.CreatedDate)}
-              </Text>
-              {recentEvent.Description && (
-                <Text className="text-sm text-gray-600 mt-2">
-                  {recentEvent.Description}
+              {fullProperty.Owner_2_Name_Full__c && (
+                <Text style={styles.sectionSubValue}>
+                  {fullProperty.Owner_2_Name_Full__c}
                 </Text>
               )}
             </View>
-          </View>
-        )}
 
-        {/* Property Details */}
-        <View className="px-6 py-4 border-b border-gray-200">
-          <Text className="text-lg font-semibold text-gray-900 mb-3">
-            Property Details
-          </Text>
-          
-          {fullProperty.Existing_Roof_Type__c && (
-            <DetailRow 
-              label="Roof Type" 
-              value={fullProperty.Existing_Roof_Type__c} 
-            />
-          )}
-          
-          {fullProperty.Existing_Siding__c && (
-            <DetailRow 
-              label="Siding" 
-              value={fullProperty.Existing_Siding__c} 
-            />
-          )}
-          
-          {fullProperty.Has_Solar_On_Roof__c && (
-            <DetailRow 
-              label="Solar" 
-              value={fullProperty.Has_Solar_On_Roof__c} 
-            />
-          )}
-        </View>
-
-        {/* Events History */}
-        {events.length > 1 && (
-          <View className="px-6 py-4 border-b border-gray-200">
-            <Text className="text-lg font-semibold text-gray-900 mb-3">
-              Event History ({events.length})
-            </Text>
-            {events.slice(1, 4).map((event) => (
-              <View key={event.Id} className="mb-3 pb-3 border-b border-gray-100">
-                <Text className="text-sm text-gray-700">{event.Subject}</Text>
-                <Text className="text-xs text-gray-500 mt-1">
-                  {formatDate(event.CreatedDate)}
-                </Text>
+            {/* Property Info Grid */}
+            <View style={styles.gridSection}>
+              <View style={styles.gridRow}>
+                <View style={styles.gridItem}>
+                  <Text style={styles.sectionLabel}>Existing Roof Type</Text>
+                  <Text style={styles.sectionValue}>
+                    {fullProperty.Existing_Roof_Type__c || 'N/A'}
+                  </Text>
+                </View>
+                <View style={styles.gridItem}>
+                  <Text style={styles.sectionLabel}>Existing Siding</Text>
+                  <Text style={styles.sectionValue}>
+                    {fullProperty.Existing_Siding__c || 'N/A'}
+                  </Text>
+                </View>
               </View>
-            ))}
-          </View>
-        )}
-
-        {/* Leads */}
-        {leads.length > 0 && (
-          <View className="px-6 py-4">
-            <Text className="text-lg font-semibold text-gray-900 mb-3">
-              Leads ({leads.length})
-            </Text>
-            {leads.slice(0, 3).map((lead) => (
-              <View key={lead.Id} className="mb-3 pb-3 border-b border-gray-100">
-                <Text className="text-sm font-medium text-gray-900">
-                  {lead.FirstName} {lead.LastName}
-                </Text>
-                <Text className="text-xs text-gray-500 mt-1">
-                  Status: {lead.Status}
-                </Text>
+              <View style={styles.gridRow}>
+                <View style={styles.gridItem}>
+                  <Text style={styles.sectionLabel}>Solar On Property</Text>
+                  <Text style={styles.sectionValue}>
+                    {fullProperty.Has_Solar_On_Roof__c || 'N/A'}
+                  </Text>
+                </View>
+                <View style={styles.gridItem}>
+                  <Text style={styles.sectionLabel}>Year Built</Text>
+                  <Text style={styles.sectionValue}>
+                    {fullProperty.Year_Built_Primary_Structure__c || 'N/A'}
+                  </Text>
+                </View>
               </View>
-            ))}
-          </View>
+            </View>
+
+            {/* Most Recent Event */}
+            <View style={styles.section}>
+              <View style={styles.sectionRow}>
+                <Text style={styles.sectionLabel}>Most Recent Activity</Text>
+                {recentEvent && (
+                  <View style={styles.eventMeta}>
+                    <Text style={styles.eventMetaText}>{daysAgo}</Text>
+                    <Text style={styles.eventMetaText}>By: {submittedBy}</Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.dispositionBadge}>
+                <Text style={styles.dispositionText}>{dispositionStatus}</Text>
+              </View>
+              {recentEvent?.Description && (
+                <Text style={styles.eventDescription}>{recentEvent.Description}</Text>
+              )}
+            </View>
+          </>
+        ) : (
+          <>
+            {/* Events */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Events ({events.length})</Text>
+              {events.length === 0 ? (
+                <Text style={styles.emptyText}>No events found</Text>
+              ) : (
+                events.slice(0, 5).map((event: any) => (
+                  <View key={event.Id} style={styles.listItem}>
+                    <View style={styles.listItemHeader}>
+                      <Text style={styles.listItemTitle}>{event.Subject}</Text>
+                      <View style={[
+                        styles.statusBadge,
+                        getStatusStyle(event.Disposition_Status__c)
+                      ]}>
+                        <Text style={styles.statusText}>
+                          {event.Disposition_Status__c || 'N/A'}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.listItemMeta}>
+                      {formatDate(event.CreatedDate)} • {event.Submitted_By__r?.Name || 'N/A'}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </View>
+
+            {/* Leads */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Leads ({leads.length})</Text>
+              {leads.length === 0 ? (
+                <Text style={styles.emptyText}>No leads found</Text>
+              ) : (
+                leads.slice(0, 5).map((lead: any) => (
+                  <View key={lead.Id} style={styles.listItem}>
+                    <View style={styles.listItemHeader}>
+                      <Text style={styles.listItemTitle}>
+                        {lead.Name || `${lead.FirstName || ''} ${lead.LastName || ''}`.trim() || 'Unnamed Lead'}
+                      </Text>
+                      <View style={[styles.statusBadge, getLeadStatusStyle(lead.Status)]}>
+                        <Text style={styles.statusText}>{lead.Status || 'New'}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.listItemMeta}>
+                      {lead.Lead_Type__c || 'Standard'} • {formatDate(lead.CreatedDate)}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </View>
+
+            {/* Projects */}
+            {projects.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Projects ({projects.length})</Text>
+                {projects.slice(0, 3).map((project: any) => (
+                  <View key={project.Id} style={styles.listItem}>
+                    <Text style={styles.listItemTitle}>{project.Name}</Text>
+                    <Text style={styles.listItemMeta}>
+                      Stage: {project.Project_Stage__c || 'Not Started'}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </>
         )}
       </ScrollView>
 
-      {/* Action Buttons */}
-      <View className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      {/* Action Buttons - iOS Style */}
+      <View style={[styles.actionContainer, { paddingBottom: Math.max(insets.bottom, 24) + 10 }]}>
         <TouchableOpacity
-          className="bg-blue-600 rounded-lg py-4 mb-3 items-center"
+          style={styles.primaryButton}
           onPress={onKnockDoor}
+          activeOpacity={0.8}
         >
-          <Text className="text-white text-base font-semibold">Knock Door</Text>
+          <Ionicons name="hand-left" size={18} color="#fff" />
+          <Text style={styles.primaryButtonText}>Knock Door</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity
-          className="bg-white border border-blue-600 rounded-lg py-4 items-center"
-          onPress={onCreateLead}
-        >
-          <Text className="text-blue-600 text-base font-semibold">Create Lead</Text>
-        </TouchableOpacity>
+
+        <View style={styles.secondaryButtons}>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={onClose}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close-circle" size={22} color="#8E8E93" />
+            <Text style={styles.secondaryButtonText}>Close</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={onCreateLead}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="person-add" size={22} color="#007AFF" />
+            <Text style={[styles.secondaryButtonText, { color: '#007AFF' }]}>Lead</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View className="flex-row justify-between mb-2">
-      <Text className="text-sm text-gray-600">{label}:</Text>
-      <Text className="text-sm text-gray-900 font-medium">{value}</Text>
-    </View>
-  );
+
+function getStatusStyle(status: string) {
+  const styles: Record<string, object> = {
+    'Contact Made': { backgroundColor: '#14B8A6' },
+    'Lead': { backgroundColor: '#F97316' },
+    'Sold': { backgroundColor: '#22C55E' },
+    'Not Interested': { backgroundColor: '#EAB308' },
+    'No Answer': { backgroundColor: '#EF4444' },
+    'Not Home': { backgroundColor: '#EF4444' },
+  };
+  return styles[status] || { backgroundColor: '#6B7280' };
 }
+
+function getLeadStatusStyle(status: string) {
+  const styles: Record<string, object> = {
+    'New': { backgroundColor: '#3B82F6' },
+    'Contacted': { backgroundColor: '#14B8A6' },
+    'Qualified': { backgroundColor: '#F97316' },
+    'Sold': { backgroundColor: '#22C55E' },
+    'Lost': { backgroundColor: '#EF4444' },
+  };
+  return styles[status] || { backgroundColor: '#6B7280' };
+}
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    height: SCREEN_HEIGHT * 0.8, // Fixed height to prevent layout issues
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+
+
+  loadingContainer: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    color: '#6b7280',
+    fontSize: 14,
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    alignItems: 'center',
+  },
+  dragHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#d1d5db',
+    borderRadius: 2,
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    textAlign: 'center',
+    paddingHorizontal: 40,
+  },
+  closeButton: {
+    position: 'absolute',
+    right: 16,
+    top: 24,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+  },
+  activeTab: {
+    backgroundColor: '#3b82f6',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6b7280',
+  },
+  activeTabText: {
+    color: '#fff',
+  },
+  badge: {
+    backgroundColor: '#ef4444',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 6,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  contentContainer: {
+    paddingBottom: 20,
+  },
+
+  section: {
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  sectionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  sectionContent: {
+    flex: 1,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6b7280',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  sectionValue: {
+    fontSize: 15,
+    color: '#111827',
+  },
+  sectionSubValue: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  projectBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+  },
+  projectBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#B45309',
+  },
+  gridSection: {
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  gridRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 12,
+  },
+  gridItem: {
+    flex: 1,
+  },
+  eventMeta: {
+    alignItems: 'flex-end',
+  },
+  eventMetaText: {
+    fontSize: 11,
+    color: '#9ca3af',
+    fontStyle: 'italic',
+  },
+  dispositionBadge: {
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+  },
+  dispositionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  eventDescription: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginTop: 12,
+    lineHeight: 20,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#9ca3af',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  listItem: {
+    backgroundColor: '#f9fafb',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  listItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  listItemTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
+    flex: 1,
+  },
+  listItemMeta: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#fff',
+  },
+  actionContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 34, // Safe area bottom
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5EA',
+    backgroundColor: '#F2F2F7',
+  },
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#007AFF',
+    paddingVertical: 16,
+    borderRadius: 14,
+    gap: 8,
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  primaryButtonText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
+    letterSpacing: -0.4,
+  },
+  secondaryButtons: {
+    flexDirection: 'row',
+    marginTop: 12,
+    gap: 12,
+  },
+  secondaryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  secondaryButtonText: {
+    color: '#8E8E93',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+});
+
