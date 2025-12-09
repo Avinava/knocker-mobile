@@ -2,6 +2,13 @@ import apiClient from './client';
 import { API_ENDPOINTS } from '@/config/api';
 import { Lead, CreateLeadRequest, UpdateLeadRequest } from '@/models/types';
 
+interface AccessibleLeadsResponse {
+  leads: Lead[];
+  nextPageToken?: string;
+  hasMore?: boolean;
+  totalReturned?: number;
+}
+
 export const leadsApi = {
   /**
    * Create a new lead
@@ -11,10 +18,10 @@ export const leadsApi = {
   },
 
   /**
-   * Get a lead by ID
+   * Get a lead by ID (with detail)
    */
   async getById(leadId: string): Promise<Lead> {
-    return apiClient.get<Lead>(`${API_ENDPOINTS.LEADS}/${leadId}`);
+    return apiClient.get<Lead>(`${API_ENDPOINTS.LEADS}/${leadId}/detail`);
   },
 
   /**
@@ -34,10 +41,29 @@ export const leadsApi = {
   },
 
   /**
-   * Get leads for the current user
+   * Get accessible leads for the current user
+   * Uses /data/leads/accessible endpoint with pagination support
    */
-  async getMyLeads(): Promise<Lead[]> {
-    return apiClient.get<Lead[]>(`${API_ENDPOINTS.LEADS}/my`);
+  async getMyLeads(params?: {
+    pageSize?: number;
+    orderBy?: string;
+    orderDirection?: 'ASC' | 'DESC';
+    searchTerm?: string;
+    status?: string;
+    nextPageToken?: string;
+  }): Promise<Lead[]> {
+    const response = await apiClient.get<AccessibleLeadsResponse>(
+      API_ENDPOINTS.LEADS_ACCESSIBLE,
+      {
+        params: {
+          pageSize: params?.pageSize || 200,
+          orderBy: params?.orderBy || 'CreatedDate',
+          orderDirection: params?.orderDirection || 'DESC',
+          ...params,
+        },
+      }
+    );
+    return response.leads || [];
   },
 
   /**
