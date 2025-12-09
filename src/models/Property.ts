@@ -10,6 +10,22 @@ export interface MarkerStyle {
   animate: boolean;
 }
 
+// Helper function to extract location from property
+function getLocationFromProperty(record: PropertyType): Location {
+  // Try Geolocation__c first
+  if (record.Geolocation__c?.latitude != null && record.Geolocation__c?.longitude != null) {
+    return {
+      latitude: record.Geolocation__c.latitude,
+      longitude: record.Geolocation__c.longitude,
+    };
+  }
+  // Fall back to Latitude__c and Longitude__c
+  return {
+    latitude: record.Latitude__c || 0,
+    longitude: record.Longitude__c || 0,
+  };
+}
+
 export default class PropertyMarker {
   public record: PropertyType;
   public location: Location;
@@ -23,12 +39,10 @@ export default class PropertyMarker {
   ) {
     this.record = record;
     this.currentDisposition = dispositionType;
-    this.location = {
-      latitude: record.Geolocation__c.latitude,
-      longitude: record.Geolocation__c.longitude,
-    };
+    this.location = getLocationFromProperty(record);
     this.marker = this.calculateMarkerStyle();
   }
+
 
   private calculateMarkerStyle(): MarkerStyle {
     const event = this.getMostRecentEvent(this.currentDisposition);

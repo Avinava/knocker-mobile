@@ -104,10 +104,11 @@ class APIClient {
     this.failedQueue = [];
   }
 
-  async get<T>(url: string, params?: Record<string, unknown>) {
-    const response = await this.client.get<T>(url, { params });
+  async get<T>(url: string, config?: { params?: Record<string, unknown> }) {
+    const response = await this.client.get<T>(url, config);
     return response.data;
   }
+
 
   async post<T>(url: string, data?: unknown) {
     const response = await this.client.post<T>(url, data);

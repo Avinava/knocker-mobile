@@ -50,23 +50,37 @@ export interface AuthResponse {
 export interface Property {
   Id: string;
   Name: string;
-  Address__c: string;
-  Street__c: string | null;
-  City__c: string | null;
-  State__c: string | null;
-  Postal_Code__c: string | null;
-  Country__c: string | null;
-  Geolocation__c: {
+  // Address fields (API uses Property_ prefix for some)
+  Property_Street__c?: string | null;
+  Property_City__c?: string | null;
+  Property_State__c?: string | null;
+  Property_Zip__c?: string | null;
+  // Legacy address fields (keeping for compatibility)
+  Address__c?: string;
+  Street__c?: string | null;
+  City__c?: string | null;
+  State__c?: string | null;
+  Postal_Code__c?: string | null;
+  Country__c?: string | null;
+  // Location - API returns as separate fields
+  Latitude__c: number | null;
+  Longitude__c: number | null;
+  // Optional compound location field
+  Geolocation__c?: {
     latitude: number;
     longitude: number;
   };
-  Owner_1_Name_Full__c: string | null;
-  Owner_2_Name_Full__c: string | null;
-  Owner_Occupied__c: boolean | null;
-  Existing_Roof_Type__c: string | null;
-  Existing_Siding__c: string | null;
-  Has_Solar_On_Roof__c: string | null;
-  Year_Built_Primary_Structure__c: number | null;
+  // Owner info
+  Owner_1_Name_Full__c?: string | null;
+  Owner_2_Name_Full__c?: string | null;
+  Owner_Occupied__c?: boolean | null;
+  // Property attributes
+  Existing_Roof_Type__c?: string | null;
+  Roof_Type__c?: string | null;
+  Existing_Siding__c?: string | null;
+  Has_Solar_On_Roof__c?: boolean | string | null;
+  Year_Built_Primary_Structure__c?: number | null;
+  // Related records
   Events?: {
     records: Event[];
   };
@@ -77,6 +91,7 @@ export interface Property {
     records: Project[];
   };
 }
+
 
 // Event types
 export interface Event {

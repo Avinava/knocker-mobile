@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet, Modal } from 'react-native';
 import { MapView } from '@/components/map/MapView';
 import { PropertyLayer } from '@/components/map/PropertyLayer';
@@ -19,11 +19,26 @@ export default function MapScreen() {
   } = useMapStore();
 
   // Fetch properties within current map bounds
-  const { data: properties = [], isLoading } = usePropertiesInBounds(currentBounds);
+  const { data: properties = [], isLoading, error } = usePropertiesInBounds(currentBounds);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('[MapScreen] Current bounds:', currentBounds);
+    console.log('[MapScreen] Properties loaded:', properties.length);
+    console.log('[MapScreen] Loading:', isLoading);
+    if (error) {
+      console.error('[MapScreen] Error loading properties:', error);
+    }
+    if (properties.length > 0) {
+      console.log('[MapScreen] Sample property:', JSON.stringify(properties[0], null, 2));
+    }
+  }, [currentBounds, properties, isLoading, error]);
 
   const handleRegionChange = useCallback((bounds: Bounds) => {
+    console.log('[MapScreen] Region changed, new bounds:', bounds);
     setCurrentBounds(bounds);
   }, []);
+
 
   const handlePropertyPress = useCallback((property: Property) => {
     selectProperty(property);

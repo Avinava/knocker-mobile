@@ -11,32 +11,53 @@ interface PropertyLayerProps {
   MapboxGL: any; // Injected dependency
 }
 
+// Helper function to extract coordinates from property
+function getPropertyCoordinates(property: Property): [number, number] | null {
+  // Try Geolocation__c first
+  if (property.Geolocation__c?.latitude && property.Geolocation__c?.longitude) {
+    return [property.Geolocation__c.longitude, property.Geolocation__c.latitude];
+  }
+  // Fall back to Latitude__c and Longitude__c
+  if (property.Latitude__c != null && property.Longitude__c != null) {
+    return [property.Longitude__c, property.Latitude__c];
+  }
+  return null;
+}
+
 export function PropertyLayer({ properties, onPropertyPress, MapboxGL }: PropertyLayerProps) {
   const { clusteringEnabled, selectedProperty } = useMapStore();
 
-  // Convert properties to GeoJSON for clustering
-  const geoJSON = useMemo(() => {
-    return {
-      type: 'FeatureCollection' as const,
-      features: properties.map((property) => ({
+  // Filter properties with valid coordinates and convert to GeoJSON
+  const { validProperties, geoJSON } = useMemo(() => {
+    const valid = properties.filter(p => getPropertyCoordinates(p) !== null);
+
+    const features = valid.map((property) => {
+      const coords = getPropertyCoordinates(property)!;
+      return {
         type: 'Feature' as const,
         id: property.Id,
         geometry: {
           type: 'Point' as const,
-          coordinates: [
-            property.Geolocation__c.longitude,
-            property.Geolocation__c.latitude,
-          ],
+          coordinates: coords,
         },
         properties: {
           id: property.Id,
-          address: property.Street__c || '',
+          address: property.Property_Street__c || property.Street__c || property.Name || '',
           // Store full property data for access
           propertyData: JSON.stringify(property),
         },
-      })),
+      };
+    });
+
+    return {
+      validProperties: valid,
+      geoJSON: {
+        type: 'FeatureCollection' as const,
+        features,
+      },
     };
   }, [properties]);
+
 
   if (!MapboxGL) return null;
 
@@ -44,7 +65,7 @@ export function PropertyLayer({ properties, onPropertyPress, MapboxGL }: Propert
     // Render individual markers without clustering
     return (
       <>
-        {properties.map((property) => (
+        {validProperties.map((property) => (
           <PropertyMarker
             key={property.Id}
             property={property}
@@ -56,6 +77,7 @@ export function PropertyLayer({ properties, onPropertyPress, MapboxGL }: Propert
       </>
     );
   }
+
 
   // Render with clustering
   return (

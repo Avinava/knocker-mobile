@@ -8,12 +8,26 @@ import { Bounds, Property, PropertySearchParams } from '@/models/types';
 export function usePropertiesInBounds(bounds: Bounds | null) {
   return useQuery({
     queryKey: ['properties', 'bounds', bounds],
-    queryFn: () => propertiesApi.getWithinBounds(bounds!),
+    queryFn: async () => {
+      console.log('[usePropertiesInBounds] Fetching properties with bounds:', bounds);
+      try {
+        const result = await propertiesApi.getWithinBounds(bounds!);
+        console.log('[usePropertiesInBounds] API returned:', result.length, 'properties');
+        if (result.length > 0) {
+          console.log('[usePropertiesInBounds] Sample property:', JSON.stringify(result[0], null, 2));
+        }
+        return result;
+      } catch (error) {
+        console.error('[usePropertiesInBounds] API error:', error);
+        throw error;
+      }
+    },
     enabled: !!bounds,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
 }
+
 
 /**
  * Search properties by criteria

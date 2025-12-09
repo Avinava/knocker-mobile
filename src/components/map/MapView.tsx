@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import * as Location from 'expo-location';
 // Mapbox is imported dynamically to avoid crashes in Expo Go
 // import Mapbox from '@rnmapbox/maps'; 
 import { MAPBOX_CONFIG, MAP_STYLES } from '@/config/mapbox';
@@ -78,18 +79,24 @@ export function MapView({ onRegionChange, children }: MapViewProps) {
       const center = await mapRef.current.getCenter();
       const zoom = await mapRef.current.getZoom();
 
+      console.log('[MapView] Region changed - bounds:', bounds, 'zoom:', zoom);
+
       if (bounds && bounds.length === 2) {
-        const [sw, ne] = bounds;
+        // Mapbox returns [[ne_lng, ne_lat], [sw_lng, sw_lat]] or vice versa
+        // Use Math.min/max to ensure correct values regardless of order
+        const [coord1, coord2] = bounds;
         const boundsObj: Bounds = {
-          minLat: sw[1],
-          maxLat: ne[1],
-          minLng: sw[0],
-          maxLng: ne[0],
+          minLat: Math.min(coord1[1], coord2[1]),
+          maxLat: Math.max(coord1[1], coord2[1]),
+          minLng: Math.min(coord1[0], coord2[0]),
+          maxLng: Math.max(coord1[0], coord2[0]),
         };
 
+        console.log('[MapView] Calculated bounds:', boundsObj);
         setBounds(boundsObj);
         onRegionChange?.(boundsObj);
       }
+
 
       if (center) {
         setViewState({
@@ -115,6 +122,49 @@ export function MapView({ onRegionChange, children }: MapViewProps) {
 
     return () => clearTimeout(timer);
   }, [isSupported, MapboxGL]);
+
+  // Zoom in handler
+  const handleZoomIn = useCallback(() => {
+    if (cameraRef.current) {
+      const newZoom = viewState.zoom + 1;
+      cameraRef.current.setCamera({
+        zoomLevel: newZoom,
+        animationDuration: 300,
+      });
+      setViewState({ ...viewState, zoom: newZoom });
+    }
+  }, [viewState, setViewState]);
+
+  // Zoom out handler
+  const handleZoomOut = useCallback(() => {
+    if (cameraRef.current) {
+      const newZoom = Math.max(viewState.zoom - 1, 1);
+      cameraRef.current.setCamera({
+        zoomLevel: newZoom,
+        animationDuration: 300,
+      });
+      setViewState({ ...viewState, zoom: newZoom });
+    }
+  }, [viewState, setViewState]);
+
+  // Go to user location handler
+  const handleGoToMyLocation = useCallback(async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const location = await Location.getCurrentPositionAsync({});
+        if (cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: [location.coords.longitude, location.coords.latitude],
+            zoomLevel: 16,
+            animationDuration: 1000,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error getting location:', error);
+    }
+  }, []);
 
   if (!isSupported) {
     return (
@@ -154,6 +204,10 @@ export function MapView({ onRegionChange, children }: MapViewProps) {
         scaleBarEnabled={false}
         attributionEnabled={false}
         logoEnabled={false}
+        zoomEnabled
+        scrollEnabled
+        rotateEnabled
+        pitchEnabled
       >
         <Camera
           ref={cameraRef}
@@ -176,6 +230,45 @@ export function MapView({ onRegionChange, children }: MapViewProps) {
 
         {renderedChildren}
       </NativeMapView>
+
+      {/* Map Controls Toolbar */}
+      <View style={styles.controlsContainer}>
+        {/* Zoom In Button */}
+        <TouchableOpacity
+          style={styles.controlButton}
+          onPress={handleZoomIn}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={24} color="#374151" />
+        </TouchableOpacity>
+
+        {/* Zoom Out Button */}
+        <TouchableOpacity
+          style={styles.controlButton}
+          onPress={handleZoomOut}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="remove" size={24} color="#374151" />
+        </TouchableOpacity>
+
+        {/* My Location Button */}
+        <TouchableOpacity
+          style={styles.controlButton}
+          onPress={handleGoToMyLocation}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="navigate" size={22} color="#374151" />
+        </TouchableOpacity>
+
+        {/* Refresh Button (triggers region change) */}
+        <TouchableOpacity
+          style={styles.controlButton}
+          onPress={handleRegionDidChange}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="refresh" size={22} color="#374151" />
+        </TouchableOpacity>
+      </View>
 
       {/* Floating Style Picker Button */}
       <TouchableOpacity
@@ -266,6 +359,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
     textAlign: 'center',
+  },
+  controlsContainer: {
+    position: 'absolute',
+    right: 16,
+    top: 100,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  controlButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
   fab: {
     position: 'absolute',

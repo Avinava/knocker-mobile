@@ -1,26 +1,67 @@
 import apiClient from './client';
 import { API_ENDPOINTS } from '@/config/api';
-import { 
-  Property, 
-  PropertySearchParams, 
+import {
+  Property,
+  PropertySearchParams,
   PropertyDetailsResponse,
   Bounds,
 } from '@/models/types';
 
+interface PaginatedPropertiesResponse {
+  records: Property[];
+  nextPageToken?: string;
+  hasMore?: boolean;
+  totalReturned?: number;
+}
+
 export const propertiesApi = {
   /**
    * Get properties within map bounds
+   * Uses /data/properties/within-bounds endpoint
    */
   async getWithinBounds(bounds: Bounds): Promise<Property[]> {
-    const params = new URLSearchParams({
-      nelat: bounds.maxLat.toString(),
-      nelng: bounds.maxLng.toString(),
-      swlat: bounds.minLat.toString(),
-      swlng: bounds.minLng.toString(),
-    });
-    
-    return apiClient.get<Property[]>(
-      `${API_ENDPOINTS.PROPERTIES}?${params.toString()}`
+    const params = {
+      minLat: bounds.minLat.toString(),
+      maxLat: bounds.maxLat.toString(),
+      minLng: bounds.minLng.toString(),
+      maxLng: bounds.maxLng.toString(),
+    };
+
+    console.log('[propertiesApi] getWithinBounds called with bounds:', bounds);
+    console.log('[propertiesApi] Sending params:', params);
+    console.log('[propertiesApi] Endpoint:', API_ENDPOINTS.PROPERTIES_WITHIN_BOUNDS);
+
+    const result = await apiClient.get<Property[]>(
+      API_ENDPOINTS.PROPERTIES_WITHIN_BOUNDS,
+      { params }
+    );
+
+    console.log('[propertiesApi] Response received, count:', Array.isArray(result) ? result.length : 'not array');
+    return result;
+  },
+
+
+  /**
+   * Get paginated properties
+   * Uses /data/properties/paginated endpoint
+   */
+  async getPaginated(params?: {
+    pageSize?: number;
+    orderBy?: string;
+    orderDirection?: 'ASC' | 'DESC';
+    searchTerm?: string;
+    nextPageToken?: string;
+  }): Promise<PaginatedPropertiesResponse> {
+    return apiClient.get<PaginatedPropertiesResponse>(
+      `${API_ENDPOINTS.PROPERTIES}/paginated`,
+      {
+        params: {
+          pageSize: params?.pageSize || 20,
+          orderBy: params?.orderBy || 'LastModifiedDate',
+          orderDirection: params?.orderDirection || 'DESC',
+          ...params,
+        },
+      }
     );
   },
 
@@ -29,7 +70,10 @@ export const propertiesApi = {
    */
   async search(params: PropertySearchParams): Promise<Property[]> {
     return apiClient.get<Property[]>(`${API_ENDPOINTS.PROPERTIES}/search`, {
-      params,
+      params: {
+        term: params.query || params.address,
+        ...params,
+      },
     });
   },
 
@@ -39,6 +83,16 @@ export const propertiesApi = {
   async getById(propertyId: string): Promise<PropertyDetailsResponse> {
     return apiClient.get<PropertyDetailsResponse>(
       `${API_ENDPOINTS.PROPERTIES}/${propertyId}`
+    );
+  },
+
+  /**
+   * Update a property
+   */
+  async update(propertyId: string, data: Partial<Property>): Promise<{ id: string; success: boolean }> {
+    return apiClient.put<{ id: string; success: boolean }>(
+      `${API_ENDPOINTS.PROPERTIES}/${propertyId}`,
+      data
     );
   },
 
