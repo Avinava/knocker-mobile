@@ -1,9 +1,10 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 // Mapbox is imported dynamically to avoid crashes in Expo Go
 // import Mapbox from '@rnmapbox/maps'; 
-import { MAPBOX_CONFIG, MAP_DEFAULTS } from '@/config/mapbox';
+import { MAPBOX_CONFIG, MAP_STYLES } from '@/config/mapbox';
 import { useMapStore } from '@/stores/mapStore';
 import { Bounds } from '@/models/types';
 
@@ -16,6 +17,7 @@ export function MapView({ onRegionChange, children }: MapViewProps) {
   // We use 'any' for the module because dynamic require loses types
   const [MapboxGL, setMapboxGL] = useState<any>(null);
   const [isSupported, setIsSupported] = useState(true);
+  const [showStylePicker, setShowStylePicker] = useState(false);
 
   const mapRef = useRef<any>(null);
   const cameraRef = useRef<any>(null);
@@ -25,8 +27,16 @@ export function MapView({ onRegionChange, children }: MapViewProps) {
     setViewState,
     setBounds,
     currentStyle,
+    setMapStyle,
     showUserLocation,
   } = useMapStore();
+
+  const styleOptions: { key: typeof currentStyle; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+    { key: 'streets', label: 'Streets', icon: 'map-outline' },
+    { key: 'satellite', label: 'Satellite', icon: 'planet-outline' },
+    { key: 'hybrid', label: 'Hybrid', icon: 'layers-outline' },
+    { key: 'outdoors', label: 'Outdoors', icon: 'trail-sign-outline' },
+  ];
 
   useEffect(() => {
     async function loadMapbox() {
@@ -56,14 +66,7 @@ export function MapView({ onRegionChange, children }: MapViewProps) {
 
   // Get map style URL based on current style
   const getStyleURL = () => {
-    switch (currentStyle) {
-      case 'satellite':
-        return MAPBOX_CONFIG.STYLE_SATELLITE;
-      case 'outdoors':
-        return MAPBOX_CONFIG.STYLE_OUTDOORS;
-      default:
-        return MAPBOX_CONFIG.STYLE_STREET;
-    }
+    return MAP_STYLES[currentStyle] || MAP_STYLES.streets;
   };
 
   // Handle region change (viewport movement)
@@ -173,6 +176,62 @@ export function MapView({ onRegionChange, children }: MapViewProps) {
 
         {renderedChildren}
       </NativeMapView>
+
+      {/* Floating Style Picker Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setShowStylePicker(true)}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="layers" size={24} color="#fff" />
+      </TouchableOpacity>
+
+      {/* Style Picker Modal */}
+      <Modal
+        visible={showStylePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowStylePicker(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowStylePicker(false)}
+        >
+          <View style={styles.stylePickerContainer}>
+            <Text style={styles.stylePickerTitle}>Map Style</Text>
+            {styleOptions.map((option) => (
+              <TouchableOpacity
+                key={option.key}
+                style={[
+                  styles.styleOption,
+                  currentStyle === option.key && styles.styleOptionActive,
+                ]}
+                onPress={() => {
+                  setMapStyle(option.key);
+                  setShowStylePicker(false);
+                }}
+              >
+                <Ionicons
+                  name={option.icon}
+                  size={20}
+                  color={currentStyle === option.key ? '#3b82f6' : '#6b7280'}
+                />
+                <Text
+                  style={[
+                    styles.styleOptionText,
+                    currentStyle === option.key && styles.styleOptionTextActive,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+                {currentStyle === option.key && (
+                  <Ionicons name="checkmark" size={20} color="#3b82f6" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -207,5 +266,61 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
     textAlign: 'center',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 100,
+    right: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#3b82f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stylePickerContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    width: '80%',
+    maxWidth: 300,
+  },
+  stylePickerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  styleOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  styleOptionActive: {
+    backgroundColor: '#eff6ff',
+  },
+  styleOptionText: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#4b5563',
+  },
+  styleOptionTextActive: {
+    color: '#3b82f6',
+    fontWeight: '500',
   },
 });

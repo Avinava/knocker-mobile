@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Bounds, Property } from '@/models/types';
+import { INITIAL_VIEW_STATE } from '@/config/mapbox';
 
 interface ViewState {
   latitude: number;
@@ -13,20 +14,20 @@ interface MapState {
   // View state
   viewState: ViewState;
   bounds: Bounds | null;
-  
+
   // Selected/active items
   selectedProperty: Property | null;
   hoveredProperty: Property | null;
-  
+
   // UI state
   isDrawerOpen: boolean;
   isKnockModalOpen: boolean;
   clusteringEnabled: boolean;
-  
+
   // Map settings
-  currentStyle: 'street' | 'satellite' | 'outdoors';
+  currentStyle: 'streets' | 'satellite' | 'hybrid' | 'outdoors';
   showUserLocation: boolean;
-  
+
   // Actions
   setViewState: (state: ViewState) => void;
   setBounds: (bounds: Bounds) => void;
@@ -37,18 +38,11 @@ interface MapState {
   openKnockModal: () => void;
   closeKnockModal: () => void;
   toggleClustering: () => void;
-  setMapStyle: (style: 'street' | 'satellite' | 'outdoors') => void;
+  setMapStyle: (style: 'streets' | 'satellite' | 'hybrid' | 'outdoors') => void;
   toggleUserLocation: () => void;
   reset: () => void;
 }
 
-const INITIAL_VIEW_STATE: ViewState = {
-  latitude: 40.7128, // NYC default
-  longitude: -74.0060,
-  zoom: 14,
-  pitch: 0,
-  heading: 0,
-};
 
 export const useMapStore = create<MapState>((set) => ({
   // Initial state
@@ -59,42 +53,42 @@ export const useMapStore = create<MapState>((set) => ({
   isDrawerOpen: false,
   isKnockModalOpen: false,
   clusteringEnabled: true,
-  currentStyle: 'street',
+  currentStyle: 'streets',
   showUserLocation: true,
 
   // Actions
   setViewState: (viewState) => set({ viewState }),
-  
+
   setBounds: (bounds) => set({ bounds }),
-  
-  selectProperty: (property) => set({ 
+
+  selectProperty: (property) => set({
     selectedProperty: property,
     isDrawerOpen: !!property,
   }),
-  
+
   hoverProperty: (property) => set({ hoveredProperty: property }),
-  
+
   openDrawer: () => set({ isDrawerOpen: true }),
-  
-  closeDrawer: () => set({ 
+
+  closeDrawer: () => set({
     isDrawerOpen: false,
     selectedProperty: null,
   }),
-  
+
   openKnockModal: () => set({ isKnockModalOpen: true }),
-  
+
   closeKnockModal: () => set({ isKnockModalOpen: false }),
-  
-  toggleClustering: () => set((state) => ({ 
-    clusteringEnabled: !state.clusteringEnabled 
+
+  toggleClustering: () => set((state) => ({
+    clusteringEnabled: !state.clusteringEnabled
   })),
-  
+
   setMapStyle: (style) => set({ currentStyle: style }),
-  
-  toggleUserLocation: () => set((state) => ({ 
-    showUserLocation: !state.showUserLocation 
+
+  toggleUserLocation: () => set((state) => ({
+    showUserLocation: !state.showUserLocation
   })),
-  
+
   reset: () => set({
     viewState: INITIAL_VIEW_STATE,
     bounds: null,
