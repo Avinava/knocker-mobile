@@ -2,7 +2,7 @@ import Constants from 'expo-constants';
 
 const ENV = {
   dev: {
-    apiBaseUrl: 'http://localhost:3000',
+    apiBaseUrl: 'http://192.168.0.102:3000',
     apiVersion: 'v1',
     mapboxToken: process.env.MAPBOX_ACCESS_TOKEN || 'pk.eyJ1IjoiYXZpY2FsOTkiLCJhIjoiY20ybWJ1NHBtMGpteTJpcjJlbXZvNWRlcSJ9.uXNyHy-mKBwW58k-_3GMPQ',
   },

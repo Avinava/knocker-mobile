@@ -16,6 +16,8 @@ class APIClient {
       timeout: API_CONFIG.TIMEOUT,
       headers: {
         'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
+        'Referer': 'https://knocker-prod-d9d209c5c2c9.herokuapp.com/login',
       },
     });
 

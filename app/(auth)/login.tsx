@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/authStore';
 
 const loginSchema = z.object({
@@ -17,6 +18,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const { login, error: authError, clearError } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     control,
@@ -35,7 +37,7 @@ export default function LoginScreen() {
     clearError();
 
     try {
-      await login(data);
+      await login({ ...data, rememberMe: false });
       router.replace('/(tabs)');
     } catch (error) {
       Alert.alert('Login Failed', authError || 'Please check your credentials and try again.');
@@ -87,17 +89,26 @@ export default function LoginScreen() {
             control={control}
             name="password"
             render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                className="border border-gray-300 rounded-lg px-4 py-3 text-base"
-                placeholder="Enter your password"
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!isSubmitting}
-              />
+              <View className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3">
+                <TextInput
+                  className="flex-1 text-base"
+                  placeholder="Enter your password"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!isSubmitting}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <Ionicons
+                    name={showPassword ? 'eye-off' : 'eye'}
+                    size={24}
+                    color="#6b7280"
+                  />
+                </TouchableOpacity>
+              </View>
             )}
           />
           {errors.password && (
@@ -107,9 +118,8 @@ export default function LoginScreen() {
 
         {/* Login Button */}
         <TouchableOpacity
-          className={`bg-blue-600 rounded-lg py-4 items-center ${
-            isSubmitting ? 'opacity-50' : ''
-          }`}
+          className={`bg-blue-600 rounded-lg py-4 items-center ${isSubmitting ? 'opacity-50' : ''
+            }`}
           onPress={handleSubmit(onSubmit)}
           disabled={isSubmitting}
         >

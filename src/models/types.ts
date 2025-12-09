@@ -36,11 +36,14 @@ export interface User {
 export interface LoginCredentials {
   username: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 export interface AuthResponse {
-  token: string;
+  token?: string;
   user: User;
+  success?: boolean;
+  message?: string;
 }
 
 // Property types
@@ -111,7 +114,7 @@ export interface CreateEventRequest {
   Event_Location__Longitude__s: number | null;
 }
 
-export interface UpdateEventRequest extends Partial<CreateEventRequest> {}
+export interface UpdateEventRequest extends Partial<CreateEventRequest> { }
 
 // Lead types
 export interface Lead {
@@ -154,7 +157,7 @@ export interface CreateLeadRequest {
   Description?: string;
 }
 
-export interface UpdateLeadRequest extends Partial<CreateLeadRequest> {}
+export interface UpdateLeadRequest extends Partial<CreateLeadRequest> { }
 
 // Project types
 export interface Project {

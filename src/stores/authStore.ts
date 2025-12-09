@@ -30,15 +30,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const response = await authApi.login(credentials);
 
-      // Store token securely
-      await SecureStore.setItemAsync('authToken', response.token);
+      // Store token securely if present
+      const token = response.token;
+      if (token) {
+        await SecureStore.setItemAsync('authToken', token);
+      }
 
       // Store user in AsyncStorage
       await AsyncStorage.setItem('user', JSON.stringify(response.user));
 
       set({
         user: response.user,
-        token: response.token,
+        token: token || null,
         isAuthenticated: true,
         isLoading: false,
       });
