@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
+import Constants from 'expo-constants';
 // Mapbox is imported dynamically to avoid crashes in Expo Go
 // import Mapbox from '@rnmapbox/maps'; 
 import { MAPBOX_CONFIG, MAP_DEFAULTS } from '@/config/mapbox';
@@ -29,8 +30,14 @@ export function MapView({ onRegionChange, children }: MapViewProps) {
 
   useEffect(() => {
     async function loadMapbox() {
+      // Check if running in Expo Go
+      if (Constants.appOwnership === 'expo') {
+        setIsSupported(false);
+        return;
+      }
+
       try {
-        // Dynamically load Mapbox to safely handle Expo Go (where native code is missing)
+        // Dynamically load Mapbox
         const Mapbox = require('@rnmapbox/maps');
 
         // Setup Mapbox
