@@ -84,15 +84,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const token = await SecureStore.getItemAsync('authToken');
       const userJson = await AsyncStorage.getItem('user');
 
-      if (token && userJson) {
+      console.log('Restoring session:', { hasToken: !!token, hasUser: !!userJson });
+
+      // Restore session if we have user data (token is optional for cookie-based auth)
+      if (userJson) {
         const user = JSON.parse(userJson);
         set({
           user,
-          token,
+          token: token || null,
           isAuthenticated: true,
           isLoading: false,
         });
+        console.log('Session restored successfully for user:', user.email || user.username);
       } else {
+        console.log('No saved session found');
         set({ isLoading: false });
       }
     } catch (error) {
