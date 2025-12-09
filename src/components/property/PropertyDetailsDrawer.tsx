@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   contentContainer: {
-    paddingBottom: 20,
+    paddingBottom: 180, // Ensure content clears the absolute footer
   },
 
   section: {
@@ -548,12 +548,17 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   actionContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 34, // Safe area bottom
     borderTopWidth: 1,
     borderTopColor: '#E5E5EA',
     backgroundColor: '#F2F2F7',
+    zIndex: 10,
   },
   primaryButton: {
     flexDirection: 'row',
