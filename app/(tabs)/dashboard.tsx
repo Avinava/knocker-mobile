@@ -13,9 +13,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useMyLeads } from '@/hooks/useLeads';
+import { 
+  useThisWeekAppointments,
+  formatAppointmentTime,
+  formatAppointmentDate,
+  isAppointmentSoon,
+} from '@/hooks/useAppointments';
 import { useAuthStore } from '@/stores/authStore';
 import { useDispositionStore } from '@/stores/dispositionStore';
-import { DispositionType } from '@/models/types';
+import { DispositionType, Appointment } from '@/models/types';
 import { formatRelativeDate } from '@/utils/dateUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -25,6 +31,14 @@ const DISPOSITION_ICONS: Record<DispositionType, keyof typeof Ionicons.glyphMap>
   'Insurance Restoration': 'shield-outline',
   'Solar Replacement': 'sunny-outline',
   'Community Solar': 'people-outline',
+};
+
+// Appointment type icons
+const APPOINTMENT_TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  'Appointment': 'calendar-outline',
+  'Inspection': 'search-outline',
+  'Meeting': 'people-outline',
+  'Follow-up': 'refresh-outline',
 };
 
 // Status colors for stats
@@ -85,11 +99,84 @@ function QuickAction({ title, subtitle, icon, color, onPress }: QuickActionProps
   );
 }
 
+interface AppointmentCardProps {
+  appointment: Appointment;
+  onPress?: () => void;
+}
+
+function AppointmentCard({ appointment, onPress }: AppointmentCardProps) {
+  const isSoon = isAppointmentSoon(appointment);
+  const typeIcon = APPOINTMENT_TYPE_ICONS[appointment.Type] || 'calendar-outline';
+  const dateLabel = formatAppointmentDate(appointment);
+  const timeLabel = formatAppointmentTime(appointment);
+  
+  // Get display info
+  const locationName = appointment.What?.Property_Street__c || appointment.What?.Name || 'Unknown Location';
+  const contactName = appointment.Who?.Name;
+  
+  return (
+    <TouchableOpacity
+      style={[styles.appointmentCard, isSoon && styles.appointmentCardSoon]}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+    >
+      <View style={styles.appointmentLeft}>
+        <View style={[styles.appointmentIconContainer, isSoon && styles.appointmentIconContainerSoon]}>
+          <Ionicons name={typeIcon} size={18} color={isSoon ? '#DC2626' : '#3B82F6'} />
+        </View>
+      </View>
+      <View style={styles.appointmentContent}>
+        <View style={styles.appointmentHeader}>
+          <Text style={styles.appointmentSubject} numberOfLines={1}>
+            {appointment.Subject}
+          </Text>
+          {isSoon && (
+            <View style={styles.soonBadge}>
+              <Text style={styles.soonBadgeText}>Soon</Text>
+            </View>
+          )}
+        </View>
+        <Text style={styles.appointmentLocation} numberOfLines={1}>
+          {locationName}
+          {contactName ? ` • ${contactName}` : ''}
+        </Text>
+        <View style={styles.appointmentTimeRow}>
+          <Ionicons name="time-outline" size={12} color="#6B7280" />
+          <Text style={styles.appointmentTime}>{dateLabel} • {timeLabel}</Text>
+        </View>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+    </TouchableOpacity>
+  );
+}
+
 export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { selectedDisposition } = useDispositionStore();
-  const { data: leads = [], isLoading, refetch, isRefetching } = useMyLeads();
+  const { data: leads = [], isLoading: leadsLoading, refetch: refetchLeads, isRefetching: leadsRefetching } = useMyLeads();
+  const { 
+    data: appointments = [], 
+    isLoading: appointmentsLoading, 
+    refetch: refetchAppointments,
+    isRefetching: appointmentsRefetching 
+  } = useThisWeekAppointments();
+
+  const isLoading = leadsLoading || appointmentsLoading;
+  const isRefetching = leadsRefetching || appointmentsRefetching;
+
+  const handleRefresh = () => {
+    refetchLeads();
+    refetchAppointments();
+  };
+
+  // Upcoming appointments (next 5)
+  const upcomingAppointments = useMemo(() => {
+    const now = new Date();
+    return appointments
+      .filter((appt) => new Date(appt.StartDateTime) >= now)
+      .slice(0, 5);
+  }, [appointments]);
 
   // Calculate stats from leads
   const stats = useMemo(() => {
@@ -176,7 +263,7 @@ export default function DashboardScreen() {
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
-            onRefresh={refetch}
+            onRefresh={handleRefresh}
             tintColor="#3B82F6"
           />
         }
@@ -221,6 +308,48 @@ export default function DashboardScreen() {
             </View>
           </View>
         </View>
+
+        {/* Upcoming Appointments */}
+        {upcomingAppointments.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
+              <View style={styles.appointmentCountBadge}>
+                <Text style={styles.appointmentCountText}>{upcomingAppointments.length}</Text>
+              </View>
+            </View>
+            <View style={styles.appointmentsContainer}>
+              {upcomingAppointments.map((appointment) => (
+                <AppointmentCard
+                  key={appointment.Id}
+                  appointment={appointment}
+                  onPress={() => {
+                    // Navigate to property if available
+                    if (appointment.WhatId) {
+                      router.push('/(tabs)/');
+                    }
+                  }}
+                />
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* No Appointments Message */}
+        {upcomingAppointments.length === 0 && !appointmentsLoading && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Upcoming Appointments</Text>
+            </View>
+            <View style={styles.emptyAppointments}>
+              <Ionicons name="calendar-outline" size={32} color="#D1D5DB" />
+              <Text style={styles.emptyAppointmentsText}>No upcoming appointments</Text>
+              <Text style={styles.emptyAppointmentsSubtext}>
+                Schedule appointments with leads to see them here
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Lead Stats */}
         <View style={styles.section}>
@@ -553,5 +682,115 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9CA3AF',
     marginTop: 2,
+  },
+  // Appointment styles
+  appointmentCountBadge: {
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  appointmentCountText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  appointmentsContainer: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  appointmentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  appointmentCardSoon: {
+    backgroundColor: '#FEF2F2',
+  },
+  appointmentLeft: {
+    marginRight: 12,
+  },
+  appointmentIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  appointmentIconContainerSoon: {
+    backgroundColor: '#FEE2E2',
+  },
+  appointmentContent: {
+    flex: 1,
+  },
+  appointmentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  appointmentSubject: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+    flex: 1,
+  },
+  soonBadge: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  soonBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  appointmentLocation: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  appointmentTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  appointmentTime: {
+    fontSize: 12,
+    color: '#9CA3AF',
+  },
+  emptyAppointments: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  emptyAppointmentsText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 12,
+  },
+  emptyAppointmentsSubtext: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    marginTop: 4,
+    textAlign: 'center',
   },
 });

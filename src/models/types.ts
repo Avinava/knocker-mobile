@@ -101,7 +101,10 @@ export interface Event {
   Description: string | null;
   CreatedDate: string;
   ActivityDateTime?: string;
+  StartDateTime?: string;
+  EndDateTime?: string;
   WhatId: string;
+  WhoId?: string;
   Disposition_Type__c: DispositionType;
   Disposition_Status__c: string;
   Existing_Roof_Type__c: string | null;
@@ -113,7 +116,26 @@ export interface Event {
   Submitted_By__r?: {
     Name: string;
   };
+  // Related records for display
+  What?: {
+    Id: string;
+    Name: string;
+    Property_Street__c?: string;
+    Property_City__c?: string;
+  };
+  Who?: {
+    Id: string;
+    Name: string;
+    Phone?: string;
+    Email?: string;
+  };
 }
+
+// Appointment is an Event with scheduled time
+export type Appointment = Event & {
+  StartDateTime: string;
+  EndDateTime: string;
+};
 
 export interface CreateEventRequest {
   Subject: string;
@@ -129,7 +151,20 @@ export interface CreateEventRequest {
   Event_Location__Longitude__s: number | null;
 }
 
+export interface CreateAppointmentRequest {
+  Subject: string;
+  Description?: string;
+  Type: 'Appointment' | 'Inspection' | 'Meeting' | 'Follow-up';
+  WhatId?: string; // Property ID
+  WhoId?: string; // Lead ID
+  StartDateTime: string;
+  EndDateTime: string;
+  Disposition_Type__c?: DispositionType;
+}
+
 export interface UpdateEventRequest extends Partial<CreateEventRequest> { }
+
+export interface UpdateAppointmentRequest extends Partial<CreateAppointmentRequest> { }
 
 // Lead types
 export interface Lead {
