@@ -73,3 +73,25 @@ export function isToday(dateString: string | Date): boolean {
     return false;
   }
 }
+
+/**
+ * Format relative date - shows relative time for recent dates, full date for older
+ */
+export function formatRelativeDate(dateString: string | Date): string {
+  try {
+    const date = typeof dateString === 'string' ? parseISO(dateString) : dateString;
+    if (!isValid(date)) return 'Invalid date';
+    
+    const now = new Date();
+    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays < 7) {
+      return formatDistanceToNow(date, { addSuffix: true });
+    } else {
+      return format(date, 'MMM d, yyyy');
+    }
+  } catch (error) {
+    console.error('Error formatting relative date:', error);
+    return 'Invalid date';
+  }
+}

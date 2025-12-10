@@ -150,7 +150,7 @@ interface PropertyMarkerProps {
   onPress?: (property: Property) => void;
   isSelected?: boolean;
   MapboxGL: any;
-  dispositionType?: 'Insurance Restoration' | 'Community Solar';
+  dispositionType?: 'Insurance Restoration' | 'Solar Replacement' | 'Community Solar';
 }
 
 // Helper function to extract coordinates from property

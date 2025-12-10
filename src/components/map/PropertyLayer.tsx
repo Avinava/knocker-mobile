@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect } from 'react';
-import { Property } from '@/models/types';
+import { Property, DispositionType } from '@/models/types';
 import { PropertyMarker } from './PropertyMarker';
 import { useMapStore } from '@/stores/mapStore';
 import { MAP_SETTINGS } from '@/config/mapbox';
@@ -8,6 +8,7 @@ interface PropertyLayerProps {
   properties: Property[];
   onPropertyPress: (property: Property) => void;
   MapboxGL: any;
+  dispositionType?: DispositionType;
 }
 
 // Helper function to extract coordinates from property
@@ -23,7 +24,7 @@ function getPropertyCoordinates(property: Property): [number, number] | null {
   return null;
 }
 
-export function PropertyLayer({ properties, onPropertyPress, MapboxGL }: PropertyLayerProps) {
+export function PropertyLayer({ properties, onPropertyPress, MapboxGL, dispositionType = 'Insurance Restoration' }: PropertyLayerProps) {
   const { clusteringEnabled, selectedProperty } = useMapStore();
 
   // Filter properties with valid coordinates and create GeoJSON for clustering
@@ -129,6 +130,7 @@ export function PropertyLayer({ properties, onPropertyPress, MapboxGL }: Propert
           onPress={onPropertyPress}
           isSelected={selectedProperty?.Id === property.Id}
           MapboxGL={MapboxGL}
+          dispositionType={dispositionType}
         />
       ))}
     </>

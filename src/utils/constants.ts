@@ -18,6 +18,11 @@ export const DISPOSITION_VALUE_SETS: Record<string, string> = {
   'Community Solar': 'Community_Solar_Knock_Status',
 };
 
+export const PROPERTY_VALUE_SETS = {
+  ROOF_TYPE: 'Existing_Roof_Type__c',
+  SIDING: 'Existing_Siding__c',
+} as const;
+
 export const EVENT_TYPES = {
   DOOR_KNOCK: 'Door Knock',
 } as const;

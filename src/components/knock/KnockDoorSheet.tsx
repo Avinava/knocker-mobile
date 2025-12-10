@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,11 +17,12 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCreateEvent } from '@/hooks/useEvents';
-import { useValueSets } from '@/hooks/useSchema';
+import { useValueSets, useTaskFieldDefinitions } from '@/hooks/useSchema';
 import { useMapStore } from '@/stores/mapStore';
+import { useDispositionStore } from '@/stores/dispositionStore';
 import { useCurrentLocation } from '@/hooks/useCurrentLocation';
-import { DispositionType, CreateEventRequest } from '@/models/types';
-import { DISPOSITION_TYPES } from '@/utils/constants';
+import { DispositionType, CreateEventRequest, PicklistValue } from '@/models/types';
+import { DISPOSITION_TYPES, DISPOSITION_VALUE_SETS } from '@/utils/constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -39,23 +40,26 @@ type KnockDoorFormData = z.infer<typeof knockDoorSchema>;
 
 export function KnockDoorSheet() {
   const insets = useSafeAreaInsets();
-  const { selectedProperty, isKnockModalOpen, closeKnockModal } = useMapStore();
+  const { selectedProperty, isKnockSheetOpen, closeKnockSheet } = useMapStore();
+  const { selectedDisposition: storeDisposition } = useDispositionStore();
   const { mutate: createEvent, isPending } = useCreateEvent();
-  const { data: valueSets } = useValueSets();
+  const { data: valueSets, isLoading: valueSetsLoading } = useValueSets();
+  const { data: taskFields, isLoading: taskFieldsLoading } = useTaskFieldDefinitions();
   const { getCurrentPosition, location: deviceLocation, loading: locationLoading } = useCurrentLocation();
 
-  const [selectedDisposition, setSelectedDisposition] = useState<DispositionType>('Insurance Restoration');
+  const [selectedDisposition, setSelectedDisposition] = useState<DispositionType>(storeDisposition);
 
   const {
     control,
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<KnockDoorFormData>({
     resolver: zodResolver(knockDoorSchema),
     defaultValues: {
-      dispositionType: 'Insurance Restoration',
+      dispositionType: storeDisposition,
       dispositionStatus: '',
       roofType: '',
       siding: '',
@@ -63,6 +67,14 @@ export function KnockDoorSheet() {
       notes: '',
     },
   });
+
+  // Sync disposition from store when sheet opens
+  useEffect(() => {
+    if (isKnockSheetOpen) {
+      setSelectedDisposition(storeDisposition);
+      setValue('dispositionType', storeDisposition);
+    }
+  }, [isKnockSheetOpen, storeDisposition, setValue]);
 
   // Pre-populate form when property changes
   useEffect(() => {
@@ -84,16 +96,16 @@ export function KnockDoorSheet() {
     }
   }, [selectedProperty, setValue]);
 
-  // Capture location when modal opens
+  // Capture location when sheet opens
   useEffect(() => {
-    if (isKnockModalOpen) {
+    if (isKnockSheetOpen) {
       getCurrentPosition();
     }
-  }, [isKnockModalOpen, getCurrentPosition]);
+  }, [isKnockSheetOpen, getCurrentPosition]);
 
   const handleClose = () => {
     reset();
-    closeKnockModal();
+    closeKnockSheet();
   };
 
   const onSubmit = async (data: KnockDoorFormData) => {
@@ -129,23 +141,59 @@ export function KnockDoorSheet() {
   };
 
   // Get status options based on selected disposition type
-  const getStatusOptions = () => {
+  const statusOptions = useMemo((): PicklistValue[] => {
     if (!valueSets) return [];
-
-    const valueSetName = selectedDisposition === 'Insurance Restoration'
-      ? 'Storm_Inspection_Knock_Status'
-      : selectedDisposition === 'Solar Replacement'
-        ? 'Solar_Knock_Status'
-        : 'Community_Solar_Knock_Status';
-
+    const valueSetName = DISPOSITION_VALUE_SETS[selectedDisposition];
     return valueSets[valueSetName]?.values || [];
-  };
+  }, [valueSets, selectedDisposition]);
+
+  // Get roof type options from task field definitions or value sets
+  const roofTypeOptions = useMemo((): PicklistValue[] => {
+    // First try task field definitions
+    if (taskFields?.['Existing_Roof_Type__c']?.picklistValues) {
+      return taskFields['Existing_Roof_Type__c'].picklistValues;
+    }
+    // Fall back to value sets
+    if (valueSets?.['Existing_Roof_Type__c']?.values) {
+      return valueSets['Existing_Roof_Type__c'].values;
+    }
+    return [];
+  }, [taskFields, valueSets]);
+
+  // Get siding options from task field definitions or value sets  
+  const sidingOptions = useMemo((): PicklistValue[] => {
+    if (taskFields?.['Existing_Siding__c']?.picklistValues) {
+      return taskFields['Existing_Siding__c'].picklistValues;
+    }
+    if (valueSets?.['Existing_Siding__c']?.values) {
+      return valueSets['Existing_Siding__c'].values;
+    }
+    return [];
+  }, [taskFields, valueSets]);
+
+  // Get solar options from task field definitions or value sets
+  const solarOptions = useMemo((): PicklistValue[] => {
+    if (taskFields?.['Solar_On_Property__c']?.picklistValues) {
+      return taskFields['Solar_On_Property__c'].picklistValues;
+    }
+    if (valueSets?.['Solar_On_Property__c']?.values) {
+      return valueSets['Solar_On_Property__c'].values;
+    }
+    // Default options if not available from API
+    return [
+      { label: 'Yes', value: 'Yes', default: false },
+      { label: 'No', value: 'No', default: false },
+      { label: 'Unknown', value: 'Unknown', default: false },
+    ];
+  }, [taskFields, valueSets]);
 
   if (!selectedProperty) return null;
 
+  const isLoadingSchema = valueSetsLoading || taskFieldsLoading;
+
   return (
     <Modal
-      visible={isKnockModalOpen}
+      visible={isKnockSheetOpen}
       animationType="slide"
       transparent
       onRequestClose={handleClose}
@@ -228,30 +276,41 @@ export function KnockDoorSheet() {
                 name="dispositionStatus"
                 render={({ field: { onChange, value } }) => (
                   <View style={styles.statusList}>
-                    {getStatusOptions().map((option, index) => {
-                      const isSelected = value === option.value;
-                      return (
-                        <TouchableOpacity
-                          key={option.value}
-                          style={[
-                            styles.statusItem,
-                            index < getStatusOptions().length - 1 && styles.statusItemBorder,
-                            isSelected && styles.statusItemSelected
-                          ]}
-                          onPress={() => onChange(option.value)}
-                        >
-                          <Text style={[
-                            styles.statusText,
-                            isSelected && styles.statusTextSelected
-                          ]}>
-                            {option.label}
-                          </Text>
-                          {isSelected && (
-                            <Ionicons name="checkmark-circle" size={24} color="#3b82f6" />
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
+                    {isLoadingSchema ? (
+                      <View style={styles.statusItem}>
+                        <ActivityIndicator size="small" color="#3b82f6" />
+                        <Text style={[styles.statusText, { marginLeft: 12 }]}>Loading options...</Text>
+                      </View>
+                    ) : statusOptions.length === 0 ? (
+                      <View style={styles.statusItem}>
+                        <Text style={styles.statusText}>No status options available</Text>
+                      </View>
+                    ) : (
+                      statusOptions.map((option, index) => {
+                        const isSelected = value === option.value;
+                        return (
+                          <TouchableOpacity
+                            key={option.value}
+                            style={[
+                              styles.statusItem,
+                              index < statusOptions.length - 1 && styles.statusItemBorder,
+                              isSelected && styles.statusItemSelected
+                            ]}
+                            onPress={() => onChange(option.value)}
+                          >
+                            <Text style={[
+                              styles.statusText,
+                              isSelected && styles.statusTextSelected
+                            ]}>
+                              {option.label}
+                            </Text>
+                            {isSelected && (
+                              <Ionicons name="checkmark-circle" size={24} color="#3b82f6" />
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })
+                    )}
                   </View>
                 )}
               />
@@ -272,12 +331,38 @@ export function KnockDoorSheet() {
                     control={control}
                     name="roofType"
                     render={({ field: { onChange, value } }) => (
-                      <TextInput
-                        style={styles.input}
-                        placeholder="e.g. Asphalt"
-                        value={value}
-                        onChangeText={onChange}
-                      />
+                      <View style={styles.pickerContainer}>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 40 }}>
+                          <View style={{ flexDirection: 'row', gap: 8 }}>
+                            {roofTypeOptions.length > 0 ? (
+                              roofTypeOptions.map((opt) => (
+                                <TouchableOpacity
+                                  key={opt.value}
+                                  style={[
+                                    styles.chip,
+                                    value === opt.value && styles.chipSelected
+                                  ]}
+                                  onPress={() => onChange(opt.value)}
+                                >
+                                  <Text style={[
+                                    styles.chipText,
+                                    value === opt.value && styles.chipTextSelected
+                                  ]}>
+                                    {opt.label}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))
+                            ) : (
+                              <TextInput
+                                style={styles.inputCompact}
+                                placeholder="Type..."
+                                value={value}
+                                onChangeText={onChange}
+                              />
+                            )}
+                          </View>
+                        </ScrollView>
+                      </View>
                     )}
                   />
                 </View>
@@ -289,12 +374,38 @@ export function KnockDoorSheet() {
                     control={control}
                     name="siding"
                     render={({ field: { onChange, value } }) => (
-                      <TextInput
-                        style={styles.input}
-                        placeholder="e.g. Vinyl"
-                        value={value}
-                        onChangeText={onChange}
-                      />
+                      <View style={styles.pickerContainer}>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 40 }}>
+                          <View style={{ flexDirection: 'row', gap: 8 }}>
+                            {sidingOptions.length > 0 ? (
+                              sidingOptions.map((opt) => (
+                                <TouchableOpacity
+                                  key={opt.value}
+                                  style={[
+                                    styles.chip,
+                                    value === opt.value && styles.chipSelected
+                                  ]}
+                                  onPress={() => onChange(opt.value)}
+                                >
+                                  <Text style={[
+                                    styles.chipText,
+                                    value === opt.value && styles.chipTextSelected
+                                  ]}>
+                                    {opt.label}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))
+                            ) : (
+                              <TextInput
+                                style={styles.inputCompact}
+                                placeholder="Type..."
+                                value={value}
+                                onChangeText={onChange}
+                              />
+                            )}
+                          </View>
+                        </ScrollView>
+                      </View>
                     )}
                   />
                 </View>
@@ -308,20 +419,20 @@ export function KnockDoorSheet() {
                   name="solar"
                   render={({ field: { onChange, value } }) => (
                     <View style={styles.segmentContainer}>
-                      {['Yes', 'No', 'Unknown'].map((option) => (
+                      {solarOptions.map((option) => (
                         <TouchableOpacity
-                          key={option}
+                          key={option.value}
                           style={[
                             styles.segmentButton,
-                            value === option && styles.segmentButtonSelected
+                            value === option.value && styles.segmentButtonSelected
                           ]}
-                          onPress={() => onChange(option)}
+                          onPress={() => onChange(option.value)}
                         >
                           <Text style={[
                             styles.segmentText,
-                            value === option && styles.segmentTextSelected
+                            value === option.value && styles.segmentTextSelected
                           ]}>
-                            {option}
+                            {option.label}
                           </Text>
                         </TouchableOpacity>
                       ))}
@@ -601,5 +712,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 17,
     fontWeight: '600',
+  },
+  inputCompact: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 10,
+    fontSize: 14,
+    color: '#111827',
+    minWidth: 100,
+  },
+  pickerContainer: {
+    minHeight: 44,
+    justifyContent: 'center',
   },
 });

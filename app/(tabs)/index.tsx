@@ -4,13 +4,30 @@ import { MapView } from '@/components/map/MapView';
 import { PropertyLayer } from '@/components/map/PropertyLayer';
 import { PropertyDetailsDrawer } from '@/components/property/PropertyDetailsDrawer';
 import { KnockDoorSheet } from '@/components/knock/KnockDoorSheet';
+import { LeadFormSheet } from '@/components/leads/LeadFormSheet';
 import { usePropertiesInBounds } from '@/hooks/useProperties';
 import { useMapStore } from '@/stores/mapStore';
-import { Property, Bounds } from '@/models/types';
+import { useDispositionStore } from '@/stores/dispositionStore';
+import { Property, Bounds, DispositionType } from '@/models/types';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut, FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import * as Location from 'expo-location';
+import { DISPOSITION_TYPES } from '@/utils/constants';
+
+// Disposition icons mapping
+const DISPOSITION_ICONS: Record<DispositionType, keyof typeof Ionicons.glyphMap> = {
+  'Insurance Restoration': 'shield-outline',
+  'Solar Replacement': 'sunny-outline',
+  'Community Solar': 'people-outline',
+};
+
+// Disposition short labels
+const DISPOSITION_SHORT_LABELS: Record<DispositionType, string> = {
+  'Insurance Restoration': 'Storm',
+  'Solar Replacement': 'Solar',
+  'Community Solar': 'Community',
+};
 
 const MapControlBar = ({
   onZoomIn,
@@ -19,7 +36,9 @@ const MapControlBar = ({
   onRefresh,
   onSearchToggle,
   onStyleToggle,
-  isSearchVisible
+  onDispositionToggle,
+  isSearchVisible,
+  selectedDisposition,
 }: {
   onZoomIn: () => void;
   onZoomOut: () => void;
@@ -27,9 +46,20 @@ const MapControlBar = ({
   onRefresh: () => void;
   onSearchToggle: () => void;
   onStyleToggle: () => void;
+  onDispositionToggle: () => void;
   isSearchVisible: boolean;
+  selectedDisposition: DispositionType;
 }) => (
   <View style={styles.controlBar}>
+    {/* Disposition Selector Button */}
+    <TouchableOpacity onPress={onDispositionToggle} style={styles.controlButton}>
+      <Ionicons 
+        name={DISPOSITION_ICONS[selectedDisposition]} 
+        size={22} 
+        color="#3B82F6" 
+      />
+    </TouchableOpacity>
+    <View style={styles.dividerHorizontal} />
     <TouchableOpacity onPress={onSearchToggle} style={styles.controlButton}>
       <Ionicons name={isSearchVisible ? "close" : "search"} size={22} color="#374151" />
     </TouchableOpacity>
@@ -57,18 +87,22 @@ const MapControlBar = ({
 export default function MapScreen() {
   const [currentBounds, setCurrentBounds] = useState<Bounds | null>(null);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [showDispositionPicker, setShowDispositionPicker] = useState(false);
+  const [showLeadForm, setShowLeadForm] = useState(false);
 
   const {
     selectedProperty,
     selectProperty,
     isDrawerOpen,
     closeDrawer,
-    openKnockModal,
+    openKnockSheet,
     viewState,
     setViewState,
     setMapStyle,
     currentStyle
   } = useMapStore();
+
+  const { selectedDisposition, setDisposition } = useDispositionStore();
 
   // Fetch properties within current map bounds
   const { data: properties = [], isLoading, isFetching, error, refetch } = usePropertiesInBounds(currentBounds);
@@ -94,13 +128,13 @@ export default function MapScreen() {
 
   const handleKnockDoor = useCallback(() => {
     closeDrawer();
-    openKnockModal();
-  }, [closeDrawer, openKnockModal]);
+    openKnockSheet();
+  }, [closeDrawer, openKnockSheet]);
 
   const handleCreateLead = useCallback(() => {
-    // Will implement lead form
-    console.log('Create lead for:', selectedProperty?.Id);
-  }, [selectedProperty]);
+    closeDrawer();
+    setShowLeadForm(true);
+  }, [closeDrawer]);
 
   // Controls Logic
   const handleZoomIn = () => setViewState({ ...viewState, zoom: viewState.zoom + 1 });
@@ -131,6 +165,10 @@ export default function MapScreen() {
     setMapStyle(styles[nextIndex]);
   };
 
+  const handleDispositionToggle = () => {
+    setShowDispositionPicker(true);
+  };
+
   return (
     <View style={styles.container}>
       <MapView onRegionChange={handleRegionChange}>
@@ -141,6 +179,7 @@ export default function MapScreen() {
                 properties={properties}
                 onPropertyPress={handlePropertyPress}
                 MapboxGL={MapboxGL}
+                dispositionType={selectedDisposition}
               />
             )}
           </>
@@ -192,9 +231,57 @@ export default function MapScreen() {
           onRefresh={() => refetch()}
           onSearchToggle={() => setIsSearchVisible(!isSearchVisible)}
           onStyleToggle={handleStyleToggle}
+          onDispositionToggle={handleDispositionToggle}
           isSearchVisible={isSearchVisible}
+          selectedDisposition={selectedDisposition}
         />
       </SafeAreaView>
+
+      {/* Disposition Picker Modal */}
+      <Modal
+        visible={showDispositionPicker}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setShowDispositionPicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.dispositionModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowDispositionPicker(false)}
+        >
+          <View style={styles.dispositionPickerContainer}>
+            <Text style={styles.dispositionPickerTitle}>Select View</Text>
+            {DISPOSITION_TYPES.map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={[
+                  styles.dispositionOption,
+                  selectedDisposition === type && styles.dispositionOptionSelected
+                ]}
+                onPress={() => {
+                  setDisposition(type);
+                  setShowDispositionPicker(false);
+                }}
+              >
+                <Ionicons 
+                  name={DISPOSITION_ICONS[type]} 
+                  size={22} 
+                  color={selectedDisposition === type ? '#3B82F6' : '#6B7280'} 
+                />
+                <Text style={[
+                  styles.dispositionOptionText,
+                  selectedDisposition === type && styles.dispositionOptionTextSelected
+                ]}>
+                  {type}
+                </Text>
+                {selectedDisposition === type && (
+                  <Ionicons name="checkmark-circle" size={22} color="#3B82F6" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Property Details Drawer */}
       <Modal
@@ -218,6 +305,13 @@ export default function MapScreen() {
       </Modal>
 
       <KnockDoorSheet />
+
+      {/* Lead Form Sheet */}
+      <LeadFormSheet
+        visible={showLeadForm}
+        onClose={() => setShowLeadForm(false)}
+        property={selectedProperty}
+      />
 
     </View >
   );
@@ -328,6 +422,55 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '100%',
+  },
+  dispositionModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dispositionPickerContainer: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    width: '85%',
+    maxWidth: 340,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  dispositionPickerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  dispositionOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#F9FAFB',
+  },
+  dispositionOptionSelected: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#3B82F6',
+  },
+  dispositionOptionText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#374151',
+    marginLeft: 12,
+  },
+  dispositionOptionTextSelected: {
+    color: '#3B82F6',
+    fontWeight: '600',
   },
 });
 

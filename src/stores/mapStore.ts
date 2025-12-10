@@ -21,7 +21,7 @@ interface MapState {
 
   // UI state
   isDrawerOpen: boolean;
-  isKnockModalOpen: boolean;
+  isKnockSheetOpen: boolean;
   clusteringEnabled: boolean;
 
   // Map settings
@@ -35,8 +35,8 @@ interface MapState {
   hoverProperty: (property: Property | null) => void;
   openDrawer: () => void;
   closeDrawer: () => void;
-  openKnockModal: () => void;
-  closeKnockModal: () => void;
+  openKnockSheet: () => void;
+  closeKnockSheet: () => void;
   toggleClustering: () => void;
   setMapStyle: (style: 'streets' | 'satellite' | 'hybrid' | 'outdoors') => void;
   toggleUserLocation: () => void;
@@ -51,7 +51,7 @@ export const useMapStore = create<MapState>((set) => ({
   selectedProperty: null,
   hoveredProperty: null,
   isDrawerOpen: false,
-  isKnockModalOpen: false,
+  isKnockSheetOpen: false,
   clusteringEnabled: true,
   currentStyle: 'streets',
   showUserLocation: true,
@@ -75,9 +75,9 @@ export const useMapStore = create<MapState>((set) => ({
     // selectedProperty: null, // Don't clear property when just closing drawer UI
   }),
 
-  openKnockModal: () => set({ isKnockModalOpen: true }),
+  openKnockSheet: () => set({ isKnockSheetOpen: true }),
 
-  closeKnockModal: () => set({ isKnockModalOpen: false }),
+  closeKnockSheet: () => set({ isKnockSheetOpen: false }),
 
   toggleClustering: () => set((state) => ({
     clusteringEnabled: !state.clusteringEnabled
@@ -95,6 +95,6 @@ export const useMapStore = create<MapState>((set) => ({
     selectedProperty: null,
     hoveredProperty: null,
     isDrawerOpen: false,
-    isKnockModalOpen: false,
+    isKnockSheetOpen: false,
   }),
 }));

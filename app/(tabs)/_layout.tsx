@@ -16,8 +16,21 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: '#3b82f6', // blue-600
         tabBarInactiveTintColor: '#9ca3af', // gray-400
+        tabBarStyle: {
+          borderTopWidth: 1,
+          borderTopColor: '#E5E7EB',
+        },
       }}
     >
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: 'Dashboard',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="grid" size={size} color={color} />
+          ),
+        }}
+      />
       <Tabs.Screen
         name="index"
         options={{
