@@ -14,7 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,7 +36,7 @@ const leadFormSchema = z.object({
   state: z.string().optional(),
   postalCode: z.string().optional(),
   leadType: z.enum(['Insurance Restoration', 'Solar Replacement', 'Community Solar']),
-  status: z.string().default('New'),
+  status: z.string(),
   description: z.string().optional(),
 });
 
@@ -61,7 +61,7 @@ export function LeadFormSheet({ visible, onClose, property, lead }: LeadFormShee
   const { selectedDisposition } = useDispositionStore();
   const { mutate: createLead, isPending: isCreating } = useCreateLead();
   const { mutate: updateLead, isPending: isUpdating } = useUpdateLead();
-  
+
   const isEditing = !!lead;
   const isPending = isCreating || isUpdating;
 
@@ -112,7 +112,7 @@ export function LeadFormSheet({ visible, onClose, property, lead }: LeadFormShee
       setValue('city', property.City__c || property.Property_City__c || '');
       setValue('state', property.State__c || property.Property_State__c || '');
       setValue('postalCode', property.Postal_Code__c || property.Property_Zip__c || '');
-      
+
       // Parse owner name if available
       const ownerName = property.Owner_1_Name_Full__c || '';
       const nameParts = ownerName.split(' ');
@@ -137,7 +137,7 @@ export function LeadFormSheet({ visible, onClose, property, lead }: LeadFormShee
     onClose();
   };
 
-  const onSubmit = (data: LeadFormData) => {
+  const onSubmit: SubmitHandler<LeadFormData> = (data) => {
     const leadData: CreateLeadRequest = {
       FirstName: data.firstName,
       LastName: data.lastName,

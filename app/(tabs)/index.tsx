@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet, Modal, Text, TouchableOpacity, ActivityIndicator, TextInput, Platform, Alert } from 'react-native';
 import { MapView } from '@/components/map/MapView';
 import { PropertyLayer } from '@/components/map/PropertyLayer';
-import { PropertyDetailsDrawer } from '@/components/property/PropertyDetailsDrawer';
+import { PropertySheet } from '@/components/property/PropertySheet';
 import { KnockDoorSheet } from '@/components/knock/KnockDoorSheet';
 import { LeadFormSheet } from '@/components/leads/LeadFormSheet';
 import { usePropertiesInBounds } from '@/hooks/useProperties';
@@ -53,10 +53,10 @@ const MapControlBar = ({
   <View style={styles.controlBar}>
     {/* Disposition Selector Button */}
     <TouchableOpacity onPress={onDispositionToggle} style={styles.controlButton}>
-      <Ionicons 
-        name={DISPOSITION_ICONS[selectedDisposition]} 
-        size={22} 
-        color="#3B82F6" 
+      <Ionicons
+        name={DISPOSITION_ICONS[selectedDisposition]}
+        size={22}
+        color="#3B82F6"
       />
     </TouchableOpacity>
     <View style={styles.dividerHorizontal} />
@@ -263,10 +263,10 @@ export default function MapScreen() {
                   setShowDispositionPicker(false);
                 }}
               >
-                <Ionicons 
-                  name={DISPOSITION_ICONS[type]} 
-                  size={22} 
-                  color={selectedDisposition === type ? '#3B82F6' : '#6B7280'} 
+                <Ionicons
+                  name={DISPOSITION_ICONS[type]}
+                  size={22}
+                  color={selectedDisposition === type ? '#3B82F6' : '#6B7280'}
                 />
                 <Text style={[
                   styles.dispositionOptionText,
@@ -293,7 +293,7 @@ export default function MapScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             {selectedProperty && (
-              <PropertyDetailsDrawer
+              <PropertySheet
                 property={selectedProperty}
                 onClose={closeDrawer}
                 onKnockDoor={handleKnockDoor}

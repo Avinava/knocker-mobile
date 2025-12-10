@@ -12,9 +12,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { usePropertyDetails } from '@/hooks/useProperties';
 import { Property } from '@/models/types';
 import { formatDate, getRelativeTime } from '@/utils/dateUtils';
+import { getStatusStyle, getLeadStatusStyle } from '@/utils/helpers';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-interface PropertyDetailsDrawerProps {
+interface PropertySheetProps {
   property: Property;
   onClose: () => void;
   onKnockDoor: () => void;
@@ -23,12 +24,12 @@ interface PropertyDetailsDrawerProps {
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-export function PropertyDetailsDrawer({
+export function PropertySheet({
   property,
   onClose,
   onKnockDoor,
   onCreateLead,
-}: PropertyDetailsDrawerProps) {
+}: PropertySheetProps) {
   const insets = useSafeAreaInsets();
   const { data: details, isLoading } = usePropertyDetails(property.Id);
   const [activeTab, setActiveTab] = useState<'details' | 'related'>('details');
@@ -300,28 +301,7 @@ export function PropertyDetailsDrawer({
 }
 
 
-function getStatusStyle(status: string) {
-  const styles: Record<string, object> = {
-    'Contact Made': { backgroundColor: '#14B8A6' },
-    'Lead': { backgroundColor: '#F97316' },
-    'Sold': { backgroundColor: '#22C55E' },
-    'Not Interested': { backgroundColor: '#EAB308' },
-    'No Answer': { backgroundColor: '#EF4444' },
-    'Not Home': { backgroundColor: '#EF4444' },
-  };
-  return styles[status] || { backgroundColor: '#6B7280' };
-}
 
-function getLeadStatusStyle(status: string) {
-  const styles: Record<string, object> = {
-    'New': { backgroundColor: '#3B82F6' },
-    'Contacted': { backgroundColor: '#14B8A6' },
-    'Qualified': { backgroundColor: '#F97316' },
-    'Sold': { backgroundColor: '#22C55E' },
-    'Lost': { backgroundColor: '#EF4444' },
-  };
-  return styles[status] || { backgroundColor: '#6B7280' };
-}
 
 const styles = StyleSheet.create({
   container: {

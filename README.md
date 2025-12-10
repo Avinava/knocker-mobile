@@ -44,7 +44,7 @@ knocker-mobile/
 │   │   │   ├── MapControls.tsx   # Floating map controls
 │   │   │   └── SearchBar.tsx     # Property search
 │   │   ├── knock/                # Knock door components
-│   │   │   ├── KnockModal.tsx    # Door knock form modal
+│   │   │   ├── KnockDoorSheet.tsx# Door knock form modal
 │   │   │   ├── DispositionPicker.tsx
 │   │   │   └── PropertyFields.tsx
 │   │   ├── lead/                 # Lead management components
@@ -53,7 +53,7 @@ knocker-mobile/
 │   │   │   └── LeadList.tsx
 │   │   ├── property/             # Property components
 │   │   │   ├── PropertyDetail.tsx
-│   │   │   ├── PropertyDrawer.tsx# Bottom sheet property details
+│   │   │   ├── PropertySheet.tsx # Bottom sheet property details
 │   │   │   ├── EventTimeline.tsx # Activity timeline
 │   │   │   └── RelatedContent.tsx
 │   │   └── ui/                   # Base UI components

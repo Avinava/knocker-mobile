@@ -20,7 +20,7 @@ import { useCreateEvent } from '@/hooks/useEvents';
 import { useValueSets, useTaskFieldDefinitions } from '@/hooks/useSchema';
 import { useMapStore } from '@/stores/mapStore';
 import { useDispositionStore } from '@/stores/dispositionStore';
-import { useCurrentLocation } from '@/hooks/useCurrentLocation';
+import { useLocation } from '@/hooks/useLocation';
 import { DispositionType, CreateEventRequest, PicklistValue } from '@/models/types';
 import { DISPOSITION_TYPES, DISPOSITION_VALUE_SETS } from '@/utils/constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -45,7 +45,7 @@ export function KnockDoorSheet() {
   const { mutate: createEvent, isPending } = useCreateEvent();
   const { data: valueSets, isLoading: valueSetsLoading } = useValueSets();
   const { data: taskFields, isLoading: taskFieldsLoading } = useTaskFieldDefinitions();
-  const { getCurrentPosition, location: deviceLocation, loading: locationLoading } = useCurrentLocation();
+  const { getCurrentPosition, location: deviceLocation, loading: locationLoading } = useLocation();
 
   const [selectedDisposition, setSelectedDisposition] = useState<DispositionType>(storeDisposition);
 

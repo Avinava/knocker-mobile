@@ -255,7 +255,7 @@ This document outlines the complete executable plan for building the Knocker Mob
 
 - [ ] **2.3.2** Build PropertyDrawer component
   ```typescript
-  // src/components/property/PropertyDrawer.tsx
+  // src/components/property/PropertySheet.tsx
   - Property address/title header
   - Owner name
   - Property attributes (roof, siding, solar, year built)
@@ -339,7 +339,7 @@ This document outlines the complete executable plan for building the Knocker Mob
 
 - [ ] **3.1.4** Create knock door modal
   ```typescript
-  // src/components/knock/KnockModal.tsx
+  // src/components/knock/KnockDoorSheet.tsx
   - Form with React Hook Form + Zod
   - Disposition status picker (dynamic based on type)
   - Comments textarea
