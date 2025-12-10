@@ -253,7 +253,7 @@ This document outlines the complete executable plan for building the Knocker Mob
   - Backdrop with tap to close
   ```
 
-- [ ] **2.3.2** Build PropertyDrawer component
+- [x] **2.3.2** Build PropertySheet component
   ```typescript
   // src/components/property/PropertySheet.tsx
   - Property address/title header
@@ -337,7 +337,7 @@ This document outlines the complete executable plan for building the Knocker Mob
   - Cache value sets locally
   ```
 
-- [ ] **3.1.4** Create knock door modal
+- [ ] **3.1.4** Create KnockDoorSheet component
   ```typescript
   // src/components/knock/KnockDoorSheet.tsx
   - Form with React Hook Form + Zod
@@ -554,9 +554,9 @@ This document outlines the complete executable plan for building the Knocker Mob
 
 #### Tasks:
 
-- [ ] **4.2.1** Create network state hook
+- [x] **4.2.1** Create location tracking hook
   ```typescript
-  // src/hooks/useOffline.ts
+  // src/hooks/useLocation.ts
   function useOffline() {
     const [isOnline, setIsOnline] = useState(true);
     const [isConnected, setIsConnected] = useState(true);
