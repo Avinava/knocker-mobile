@@ -141,6 +141,28 @@ class DatabaseService {
         if (!this.db) throw new Error('Database not initialized');
         await this.db.runAsync(`DELETE FROM sync_queue WHERE id = ?`, [id]);
     }
+    // --- Value Sets (Schema) ---
+
+    async saveValueSet(name: string, data: any[] | any): Promise<void> {
+        if (!this.db) throw new Error('Database not initialized');
+
+        await this.db.runAsync(
+            `INSERT OR REPLACE INTO value_sets (name, data, fetched_at)
+             VALUES (?, ?, ?)`,
+            [name, JSON.stringify(data), Date.now()]
+        );
+    }
+
+    async getValueSet(name: string): Promise<any | null> {
+        if (!this.db) throw new Error('Database not initialized');
+
+        const result = await this.db.getFirstAsync<{ data: string }>(
+            `SELECT data FROM value_sets WHERE name = ?`,
+            [name]
+        );
+
+        return result ? JSON.parse(result.data) : null;
+    }
 }
 
 export const databaseService = DatabaseService.getInstance();
