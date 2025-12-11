@@ -48,6 +48,9 @@ export function KnockDoorSheet() {
   const { getCurrentPosition, location: deviceLocation, loading: locationLoading } = useLocation();
 
   const [selectedDisposition, setSelectedDisposition] = useState<DispositionType>(storeDisposition);
+  const [showStatusPicker, setShowStatusPicker] = useState(false);
+  const [showRoofTypePicker, setShowRoofTypePicker] = useState(false);
+  const [showSidingPicker, setShowSidingPicker] = useState(false);
 
   const {
     control,
@@ -147,37 +150,26 @@ export function KnockDoorSheet() {
     return valueSets[valueSetName]?.values || [];
   }, [valueSets, selectedDisposition]);
 
-  // Get roof type options from task field definitions or value sets
+  // Get roof type options from task field definitions (API returns lowercase keys)
   const roofTypeOptions = useMemo((): PicklistValue[] => {
-    // First try task field definitions
-    if (taskFields?.['Existing_Roof_Type__c']?.picklistValues) {
-      return taskFields['Existing_Roof_Type__c'].picklistValues;
-    }
-    // Fall back to value sets
-    if (valueSets?.['Existing_Roof_Type__c']?.values) {
-      return valueSets['Existing_Roof_Type__c'].values;
+    if (taskFields?.['existing_roof_type__c']?.picklistValues) {
+      return taskFields['existing_roof_type__c'].picklistValues;
     }
     return [];
-  }, [taskFields, valueSets]);
+  }, [taskFields]);
 
-  // Get siding options from task field definitions or value sets  
+  // Get siding options from task field definitions (API returns lowercase keys)
   const sidingOptions = useMemo((): PicklistValue[] => {
-    if (taskFields?.['Existing_Siding__c']?.picklistValues) {
-      return taskFields['Existing_Siding__c'].picklistValues;
-    }
-    if (valueSets?.['Existing_Siding__c']?.values) {
-      return valueSets['Existing_Siding__c'].values;
+    if (taskFields?.['existing_siding__c']?.picklistValues) {
+      return taskFields['existing_siding__c'].picklistValues;
     }
     return [];
-  }, [taskFields, valueSets]);
+  }, [taskFields]);
 
-  // Get solar options from task field definitions or value sets
+  // Get solar options from task field definitions (API returns lowercase keys)
   const solarOptions = useMemo((): PicklistValue[] => {
-    if (taskFields?.['Solar_On_Property__c']?.picklistValues) {
-      return taskFields['Solar_On_Property__c'].picklistValues;
-    }
-    if (valueSets?.['Solar_On_Property__c']?.values) {
-      return valueSets['Solar_On_Property__c'].values;
+    if (taskFields?.['solar_on_property__c']?.picklistValues) {
+      return taskFields['solar_on_property__c'].picklistValues;
     }
     // Default options if not available from API
     return [
@@ -185,7 +177,7 @@ export function KnockDoorSheet() {
       { label: 'No', value: 'No', default: false },
       { label: 'Unknown', value: 'Unknown', default: false },
     ];
-  }, [taskFields, valueSets]);
+  }, [taskFields]);
 
   if (!selectedProperty) return null;
 
@@ -274,45 +266,82 @@ export function KnockDoorSheet() {
               <Controller
                 control={control}
                 name="dispositionStatus"
-                render={({ field: { onChange, value } }) => (
-                  <View style={styles.statusList}>
-                    {isLoadingSchema ? (
-                      <View style={styles.statusItem}>
-                        <ActivityIndicator size="small" color="#3b82f6" />
-                        <Text style={[styles.statusText, { marginLeft: 12 }]}>Loading options...</Text>
-                      </View>
-                    ) : statusOptions.length === 0 ? (
-                      <View style={styles.statusItem}>
-                        <Text style={styles.statusText}>No status options available</Text>
-                      </View>
-                    ) : (
-                      statusOptions.map((option, index) => {
-                        const isSelected = value === option.value;
-                        return (
-                          <TouchableOpacity
-                            key={option.value}
-                            style={[
-                              styles.statusItem,
-                              index < statusOptions.length - 1 && styles.statusItemBorder,
-                              isSelected && styles.statusItemSelected
-                            ]}
-                            onPress={() => onChange(option.value)}
-                          >
-                            <Text style={[
-                              styles.statusText,
-                              isSelected && styles.statusTextSelected
-                            ]}>
-                              {option.label}
-                            </Text>
-                            {isSelected && (
-                              <Ionicons name="checkmark-circle" size={24} color="#3b82f6" />
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })
-                    )}
-                  </View>
-                )}
+                render={({ field: { onChange, value } }) => {
+                  const selectedOption = statusOptions.find(opt => opt.value === value);
+                  return (
+                    <>
+                      <TouchableOpacity
+                        style={styles.dropdownTrigger}
+                        onPress={() => setShowStatusPicker(true)}
+                        disabled={isLoadingSchema}
+                      >
+                        {isLoadingSchema ? (
+                          <ActivityIndicator size="small" color="#3b82f6" />
+                        ) : (
+                          <Text style={[
+                            styles.dropdownText,
+                            !selectedOption && styles.dropdownPlaceholder
+                          ]}>
+                            {selectedOption?.label || 'Select status...'}
+                          </Text>
+                        )}
+                        <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                      </TouchableOpacity>
+
+                      {/* Status Picker Modal */}
+                      <Modal
+                        visible={showStatusPicker}
+                        transparent
+                        animationType="fade"
+                        onRequestClose={() => setShowStatusPicker(false)}
+                      >
+                        <TouchableOpacity
+                          style={styles.pickerOverlay}
+                          activeOpacity={1}
+                          onPress={() => setShowStatusPicker(false)}
+                        >
+                          <View style={styles.pickerModal}>
+                            <View style={styles.pickerHeader}>
+                              <Text style={styles.pickerTitle}>Select Status</Text>
+                              <TouchableOpacity onPress={() => setShowStatusPicker(false)}>
+                                <Ionicons name="close" size={24} color="#6B7280" />
+                              </TouchableOpacity>
+                            </View>
+                            <ScrollView style={styles.pickerList} bounces={false}>
+                              {statusOptions.map((option, index) => {
+                                const isSelected = value === option.value;
+                                return (
+                                  <TouchableOpacity
+                                    key={option.value}
+                                    style={[
+                                      styles.pickerItem,
+                                      index < statusOptions.length - 1 && styles.pickerItemBorder,
+                                      isSelected && styles.pickerItemSelected
+                                    ]}
+                                    onPress={() => {
+                                      onChange(option.value);
+                                      setShowStatusPicker(false);
+                                    }}
+                                  >
+                                    <Text style={[
+                                      styles.pickerItemText,
+                                      isSelected && styles.pickerItemTextSelected
+                                    ]}>
+                                      {option.label}
+                                    </Text>
+                                    {isSelected && (
+                                      <Ionicons name="checkmark-circle" size={22} color="#3b82f6" />
+                                    )}
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </ScrollView>
+                          </View>
+                        </TouchableOpacity>
+                      </Modal>
+                    </>
+                  );
+                }}
               />
               {errors.dispositionStatus && (
                 <Text style={styles.errorText}>
@@ -330,40 +359,82 @@ export function KnockDoorSheet() {
                   <Controller
                     control={control}
                     name="roofType"
-                    render={({ field: { onChange, value } }) => (
-                      <View style={styles.pickerContainer}>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 40 }}>
-                          <View style={{ flexDirection: 'row', gap: 8 }}>
-                            {roofTypeOptions.length > 0 ? (
-                              roofTypeOptions.map((opt) => (
-                                <TouchableOpacity
-                                  key={opt.value}
-                                  style={[
-                                    styles.chip,
-                                    value === opt.value && styles.chipSelected
-                                  ]}
-                                  onPress={() => onChange(opt.value)}
-                                >
-                                  <Text style={[
-                                    styles.chipText,
-                                    value === opt.value && styles.chipTextSelected
-                                  ]}>
-                                    {opt.label}
-                                  </Text>
-                                </TouchableOpacity>
-                              ))
+                    render={({ field: { onChange, value } }) => {
+                      const selectedOption = roofTypeOptions.find(opt => opt.value === value);
+                      return (
+                        <>
+                          <TouchableOpacity
+                            style={styles.dropdownTriggerCompact}
+                            onPress={() => setShowRoofTypePicker(true)}
+                            disabled={isLoadingSchema}
+                          >
+                            {isLoadingSchema ? (
+                              <ActivityIndicator size="small" color="#3b82f6" />
                             ) : (
-                              <TextInput
-                                style={styles.inputCompact}
-                                placeholder="Type..."
-                                value={value}
-                                onChangeText={onChange}
-                              />
+                              <Text style={[
+                                styles.dropdownTextCompact,
+                                !selectedOption && styles.dropdownPlaceholder
+                              ]} numberOfLines={1}>
+                                {selectedOption?.label || 'Select...'}
+                              </Text>
                             )}
-                          </View>
-                        </ScrollView>
-                      </View>
-                    )}
+                            <Ionicons name="chevron-down" size={16} color="#6B7280" />
+                          </TouchableOpacity>
+
+                          {/* Roof Type Picker Modal */}
+                          <Modal
+                            visible={showRoofTypePicker}
+                            transparent
+                            animationType="fade"
+                            onRequestClose={() => setShowRoofTypePicker(false)}
+                          >
+                            <TouchableOpacity
+                              style={styles.pickerOverlay}
+                              activeOpacity={1}
+                              onPress={() => setShowRoofTypePicker(false)}
+                            >
+                              <View style={styles.pickerModal}>
+                                <View style={styles.pickerHeader}>
+                                  <Text style={styles.pickerTitle}>Select Roof Type</Text>
+                                  <TouchableOpacity onPress={() => setShowRoofTypePicker(false)}>
+                                    <Ionicons name="close" size={24} color="#6B7280" />
+                                  </TouchableOpacity>
+                                </View>
+                                <ScrollView style={styles.pickerList} bounces={false}>
+                                  {roofTypeOptions.map((option, index) => {
+                                    const isSelected = value === option.value;
+                                    return (
+                                      <TouchableOpacity
+                                        key={option.value}
+                                        style={[
+                                          styles.pickerItem,
+                                          index < roofTypeOptions.length - 1 && styles.pickerItemBorder,
+                                          isSelected && styles.pickerItemSelected
+                                        ]}
+                                        onPress={() => {
+                                          onChange(option.value);
+                                          setShowRoofTypePicker(false);
+                                        }}
+                                      >
+                                        <Text style={[
+                                          styles.pickerItemText,
+                                          isSelected && styles.pickerItemTextSelected
+                                        ]}>
+                                          {option.label}
+                                        </Text>
+                                        {isSelected && (
+                                          <Ionicons name="checkmark-circle" size={22} color="#3b82f6" />
+                                        )}
+                                      </TouchableOpacity>
+                                    );
+                                  })}
+                                </ScrollView>
+                              </View>
+                            </TouchableOpacity>
+                          </Modal>
+                        </>
+                      );
+                    }}
                   />
                 </View>
 
@@ -373,40 +444,82 @@ export function KnockDoorSheet() {
                   <Controller
                     control={control}
                     name="siding"
-                    render={({ field: { onChange, value } }) => (
-                      <View style={styles.pickerContainer}>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 40 }}>
-                          <View style={{ flexDirection: 'row', gap: 8 }}>
-                            {sidingOptions.length > 0 ? (
-                              sidingOptions.map((opt) => (
-                                <TouchableOpacity
-                                  key={opt.value}
-                                  style={[
-                                    styles.chip,
-                                    value === opt.value && styles.chipSelected
-                                  ]}
-                                  onPress={() => onChange(opt.value)}
-                                >
-                                  <Text style={[
-                                    styles.chipText,
-                                    value === opt.value && styles.chipTextSelected
-                                  ]}>
-                                    {opt.label}
-                                  </Text>
-                                </TouchableOpacity>
-                              ))
+                    render={({ field: { onChange, value } }) => {
+                      const selectedOption = sidingOptions.find(opt => opt.value === value);
+                      return (
+                        <>
+                          <TouchableOpacity
+                            style={styles.dropdownTriggerCompact}
+                            onPress={() => setShowSidingPicker(true)}
+                            disabled={isLoadingSchema}
+                          >
+                            {isLoadingSchema ? (
+                              <ActivityIndicator size="small" color="#3b82f6" />
                             ) : (
-                              <TextInput
-                                style={styles.inputCompact}
-                                placeholder="Type..."
-                                value={value}
-                                onChangeText={onChange}
-                              />
+                              <Text style={[
+                                styles.dropdownTextCompact,
+                                !selectedOption && styles.dropdownPlaceholder
+                              ]} numberOfLines={1}>
+                                {selectedOption?.label || 'Select...'}
+                              </Text>
                             )}
-                          </View>
-                        </ScrollView>
-                      </View>
-                    )}
+                            <Ionicons name="chevron-down" size={16} color="#6B7280" />
+                          </TouchableOpacity>
+
+                          {/* Siding Picker Modal */}
+                          <Modal
+                            visible={showSidingPicker}
+                            transparent
+                            animationType="fade"
+                            onRequestClose={() => setShowSidingPicker(false)}
+                          >
+                            <TouchableOpacity
+                              style={styles.pickerOverlay}
+                              activeOpacity={1}
+                              onPress={() => setShowSidingPicker(false)}
+                            >
+                              <View style={styles.pickerModal}>
+                                <View style={styles.pickerHeader}>
+                                  <Text style={styles.pickerTitle}>Select Siding</Text>
+                                  <TouchableOpacity onPress={() => setShowSidingPicker(false)}>
+                                    <Ionicons name="close" size={24} color="#6B7280" />
+                                  </TouchableOpacity>
+                                </View>
+                                <ScrollView style={styles.pickerList} bounces={false}>
+                                  {sidingOptions.map((option, index) => {
+                                    const isSelected = value === option.value;
+                                    return (
+                                      <TouchableOpacity
+                                        key={option.value}
+                                        style={[
+                                          styles.pickerItem,
+                                          index < sidingOptions.length - 1 && styles.pickerItemBorder,
+                                          isSelected && styles.pickerItemSelected
+                                        ]}
+                                        onPress={() => {
+                                          onChange(option.value);
+                                          setShowSidingPicker(false);
+                                        }}
+                                      >
+                                        <Text style={[
+                                          styles.pickerItemText,
+                                          isSelected && styles.pickerItemTextSelected
+                                        ]}>
+                                          {option.label}
+                                        </Text>
+                                        {isSelected && (
+                                          <Ionicons name="checkmark-circle" size={22} color="#3b82f6" />
+                                        )}
+                                      </TouchableOpacity>
+                                    );
+                                  })}
+                                </ScrollView>
+                              </View>
+                            </TouchableOpacity>
+                          </Modal>
+                        </>
+                      );
+                    }}
                   />
                 </View>
               </View>
@@ -608,6 +721,94 @@ const styles = StyleSheet.create({
   },
   chipTextSelected: {
     color: '#2563EB',
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 16,
+    minHeight: 52,
+  },
+  dropdownTriggerCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minHeight: 44,
+  },
+  dropdownText: {
+    fontSize: 16,
+    color: '#111827',
+    flex: 1,
+  },
+  dropdownTextCompact: {
+    fontSize: 14,
+    color: '#111827',
+    flex: 1,
+  },
+  dropdownPlaceholder: {
+    color: '#9CA3AF',
+  },
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  pickerModal: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    width: '100%',
+    maxHeight: '70%',
+    overflow: 'hidden',
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  pickerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  pickerList: {
+    maxHeight: 400,
+  },
+  pickerItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#fff',
+  },
+  pickerItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  pickerItemSelected: {
+    backgroundColor: '#F0F9FF',
+  },
+  pickerItemText: {
+    fontSize: 16,
+    color: '#111827',
+  },
+  pickerItemTextSelected: {
+    fontWeight: '600',
+    color: '#3B82F6',
   },
   statusList: {
     backgroundColor: '#fff',

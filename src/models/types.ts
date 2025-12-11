@@ -226,7 +226,10 @@ export interface Project {
 export interface PicklistValue {
   label: string;
   value: string;
-  default: boolean;
+  default?: boolean;
+  defaultValue?: boolean;
+  active?: boolean;
+  validFor?: string | null;
 }
 
 export interface FieldDefinition {
@@ -235,6 +238,15 @@ export interface FieldDefinition {
   type: string;
   required: boolean;
   picklistValues?: PicklistValue[];
+  referenceTo?: string[];
+  relationshipName?: string | null;
+  updateable?: boolean;
+  createable?: boolean;
+  calculated?: boolean;
+  isFormula?: boolean;
+  length?: number;
+  scale?: number;
+  precision?: number;
 }
 
 export interface ValueSet {

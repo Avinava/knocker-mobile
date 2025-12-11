@@ -30,6 +30,6 @@ export const API_ENDPOINTS = {
   LEADS_ACCESSIBLE: '/data/leads/accessible',
   
   // Schema
-  SCHEMA_VALUE_SETS: '/data/schema/value-sets',
+  SCHEMA_VALUE_SETS: '/data/schema/valuesets',
   SCHEMA_FIELDS: (objectName: string) => `/data/schema/fields/${objectName}`,
 };
